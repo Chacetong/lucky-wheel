@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>幸运大转盘</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <style>
+    /* =============================================
+       Reset & Custom Properties
+    ============================================= */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    :root {
+      --bg: #121212;
+      --surface: #1e1e1e;
+      --surface-light: #282828;
+      --surface-hover: #333333;
+      --accent: #1DB954;
+      --accent-hover: #1ed760;
+      --accent-dim: rgba(29, 185, 84, 0.12);
+      --text: #ffffff;
+      --text-secondary: #b3b3b3;
+      --text-muted: #727272;
+      --danger: #e74c3c;
+      --danger-hover: #ff6b6b;
+      --radius-sm: 8px;
+      --radius: 12px;
+      --radius-lg: 32px;
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+    }
+
+    html {
+      font-size: 16px;
+    }
+
+    body {
+      font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: var(--bg);
+      height: 100vh;
+      overflow: hidden;
+      color: var(--text);
+      font-weight: 500;
+      position: relative;
+    }
+
+    /* =============================================
+       App Shell
+    ============================================= */
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 24px 20px 28px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* =============================================
+       Header
+    ============================================= */
+    .header {
+      text-align: center;
+      margin-bottom: 24px;
+      user-select: none;
+    }
+
+    .header__title {
+      font-size: clamp(1.8rem, 4.5vw, 2.8rem);
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 0.04em;
+      line-height: 1.2;
+    }
+
+    .header__title span {
+      color: var(--accent);
+    }
+
+    .header__sub {
+      margin-top: 4px;
+      color: var(--text-secondary);
+      font-weight: 500;
+      font-size: 0.9rem;
+      letter-spacing: 0.08em;
+    }
+
+    /* =============================================
+       Two-column layout
+    ============================================= */
+    .content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      align-items: stretch;
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* =============================================
+       Wheel Section
+    ============================================= */
+    .wheel-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      min-height: 0;
+    }
+
+    .wheel-panel {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      padding: 22px 18px 20px;
+      width: 100%;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+    }
+
+    .wheel-wrap {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Pointer */
+    .pointer {
+      position: relative;
+      z-index: 2;
+      width: 0;
+      height: 0;
+      border-left: 14px solid transparent;
+      border-right: 14px solid transparent;
+      border-top: 32px solid var(--accent);
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+      margin-bottom: -2px;
+    }
+
+    .pointer::before {
+      content: '';
+      position: absolute;
+      top: -46px;
+      left: -8px;
+      width: 16px;
+      height: 16px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 8px rgba(29, 185, 84, 0.5);
+    }
+
+    #wheelCanvas {
+      display: block;
+      border-radius: 50%;
+      box-shadow: 0 0 0 3px var(--surface-light), 0 4px 16px rgba(0, 0, 0, 0.5);
+    }
+
+    /* =============================================
+       Spin Button
+    ============================================= */
+    .spin-btn {
+      position: relative;
+      width: 100%;
+      max-width: 260px;
+      padding: 14px 24px;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
+      transition: all 0.15s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .spin-btn:hover:not(:disabled) {
+      background: var(--accent-hover);
+      transform: scale(1.02);
+      box-shadow: 0 6px 16px rgba(29, 185, 84, 0.4);
+    }
+
+    .spin-btn:active:not(:disabled) {
+      transform: scale(0.98);
+      box-shadow: 0 2px 8px rgba(29, 185, 84, 0.2);
+    }
+
+    .spin-btn:disabled {
+      background: var(--surface-light);
+      color: var(--text-muted);
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    /* Mode toggle row */
+    .mode-row {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      border-radius: var(--radius);
+      padding: 8px 12px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .mode-row__text {
+      font-size: 0.84rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    /* Toggle switch */
+    .toggle {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+
+    .toggle__track {
+      position: absolute;
+      inset: 0;
+      background: #4d4d4d;
+      border: none;
+      border-radius: 11px;
+      transition: background 0.25s;
+      cursor: pointer;
+    }
+
+    .toggle__track::before {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      top: 3px;
+      left: 3px;
+      background: #fff;
+      border: none;
+      border-radius: 50%;
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    .toggle input:checked~.toggle__track {
+      background: var(--accent);
+    }
+
+    .toggle input:checked~.toggle__track::before {
+      transform: translateX(18px);
+    }
+
+    /* =============================================
+       Edit Section
+    ============================================= */
+    .edit-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      min-height: 0;
+    }
+
+    .edit-panel {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      padding: 24px 24px 20px;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .edit-panel.edit-locked::after {
+      content: '🔒\A抽奖进行中';
+      white-space: pre;
+      position: absolute;
+      inset: 0;
+      background: rgba(18, 18, 18, 0.85);
+      border-radius: var(--radius-lg);
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      letter-spacing: 0.04em;
+      cursor: not-allowed;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .section-label {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #fff;
+      /* background: var(--accent); */
+      border-radius: 20px;
+      /* padding: 4px 14px; */
+      white-space: nowrap;
+      letter-spacing: 0.06em;
+    }
+
+    .section-line {
+      flex: 1;
+      height: 1px;
+      background: var(--surface-light);
+    }
+
+    /* Stats row */
+    .stats-row {
+      display: flex;
+      gap: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .stats-row span {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--surface-light);
+      border-radius: 20px;
+      padding: 4px 12px;
+      color: var(--text-secondary);
+    }
+
+    .stats-row b {
+      color: var(--accent);
+    }
+
+    /* Entries list */
+    .entries-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding-right: 3px;
+    }
+
+    .entries-list::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .entries-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .entries-list::-webkit-scrollbar-thumb {
+      background: var(--surface-hover);
+      border-radius: 2px;
+    }
+
+    /* Entry row */
+    .entry-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface-light);
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      animation: rowIn 0.2s ease both;
+      transition: background 0.15s;
+    }
+
+    .entry-row:hover {
+      background: var(--surface-hover);
+    }
+
+    @keyframes rowIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    .entry-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+
+    .entry-dot:hover {
+      transform: scale(1.5);
+    }
+
+    .entry-input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      outline: none;
+      color: var(--text);
+      font-size: 0.88rem;
+      font-weight: 500;
+      padding: 4px 8px;
+      min-width: 0;
+      caret-color: var(--accent);
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .entry-input:focus {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: var(--accent);
+    }
+
+    .entry-input::placeholder {
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .weight-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;
+    }
+
+    .weight-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .weight-input {
+      width: 50px;
+      padding: 4px 5px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.84rem;
+      font-weight: 500;
+      text-align: center;
+      outline: none;
+      transition: background 0.15s, border-color 0.15s;
+      flex-shrink: 0;
+    }
+
+    .weight-input:focus {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: var(--accent);
+    }
+
+    /* Delete button */
+    .del-btn {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      line-height: 1;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+
+    .del-btn:hover {
+      background: rgba(231, 76, 60, 0.15);
+      color: var(--danger-hover);
+    }
+
+    /* Add button */
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .add-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px;
+      border: 1px dashed rgba(255, 255, 255, 0.2);
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .clear-btn {
+      padding: 10px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .clear-btn:hover {
+      background: rgba(231, 76, 60, 0.12);
+      border-color: var(--danger);
+      color: var(--danger-hover);
+    }
+
+    .add-btn:hover {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .add-btn__icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      font-weight: 700;
+    }
+
+    /* Warning notice */
+    .notice {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      background: rgba(255, 193, 7, 0.1);
+      border: 1px solid rgba(255, 193, 7, 0.25);
+      border-radius: var(--radius-sm);
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #ffc107;
+      margin-bottom: 10px;
+    }
+
+    .notice.hidden {
+      display: none;
+    }
+
+    /* =============================================
+       Toast
+    ============================================= */
+    #toastRoot {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2000;
+      display: flex;
+      flex-direction: column-reverse;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast {
+      padding: 12px 24px;
+      background: var(--surface-light);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 50px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      box-shadow: var(--shadow-lg);
+      animation: toastIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+
+    .toast.out {
+      animation: toastOut 0.2s ease both;
+    }
+
+    @keyframes toastIn {
+      from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.9);
+      }
+
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    @keyframes toastOut {
+      from {
+        opacity: 1;
+        transform: none;
+      }
+
+      to {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+    }
+
+    /* =============================================
+       Result Modal
+    ============================================= */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.22s ease both;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+
+    .overlay.out {
+      animation: fadeIn 0.2s ease reverse both;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-lg);
+      padding: 48px 48px;
+      text-align: center;
+      width: min(380px, 92vw);
+      box-shadow: var(--shadow-lg);
+      animation: modalIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+      position: relative;
+      overflow: hidden;
+    }
+
+    @keyframes modalIn {
+      from {
+        opacity: 0;
+        transform: scale(0.85);
+      }
+
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    .modal__trophy {
+      font-size: 3rem;
+      margin-bottom: 8px;
+      line-height: 1;
+    }
+
+    .modal__label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: #fff;
+      /* background: var(--accent); */
+      border-radius: 20px;
+      padding: 4px 16px;
+      /* display: inline-block; */
+      margin: 20px 0px;
+    }
+
+    .modal__winner {
+      font-size: clamp(1.5rem, 5vw, 2.2rem);
+      font-weight: 700;
+      word-break: break-word;
+      line-height: 1.3;
+      margin-bottom: 20px;
+    }
+
+    .modal__weight {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      margin-bottom: 32px;
+    }
+
+    .modal__actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 12px 16px;
+      border-radius: 50px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn--ghost {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--text-secondary);
+    }
+
+    .btn--ghost:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .btn--ghost:active {
+      transform: scale(0.98);
+    }
+
+    .btn--primary {
+      background: var(--accent);
+      border: none;
+      color: #fff;
+    }
+
+    .btn--primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn--primary:active {
+      transform: scale(0.98);
+    }
+
+    /* =============================================
+       Responsive — Mobile
+    ============================================= */
+    @media (max-width: 720px) {
+      body {
+        height: auto;
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+
+      .app {
+        height: auto;
+        min-height: 100vh;
+      }
+
+      .content {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        align-items: start;
+        min-height: unset;
+      }
+
+      .wheel-section {
+        min-height: unset;
+      }
+
+      .wheel-panel {
+        flex: none;
+        min-height: unset;
+        justify-content: flex-start;
+      }
+
+      .edit-section {
+        min-height: unset;
+      }
+
+      .edit-panel {
+        flex: none;
+        min-height: unset;
+      }
+
+      .entries-list {
+        flex: none;
+        max-height: 60vh;
+      }
+
+      .app {
+        padding: 16px 12px 36px;
+      }
+    }
+
+    @media (max-width: 400px) {
+      .modal {
+        padding: 30px 20px 24px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="app">
+
+    <!-- ① Header -->
+    <header class="header">
+      <h1 class="header__title">幸运<span>大转盘</span></h1>
+      <p class="header__sub">LUCKY WHEEL</p>
+    </header>
+
+    <!-- Main grid -->
+    <div class="content">
+
+      <!-- ② Wheel  +  ③ Button -->
+      <section class="wheel-section">
+        <div class="wheel-panel">
+          <div class="wheel-wrap">
+            <div class="pointer"></div>
+            <canvas id="wheelCanvas"></canvas>
+          </div>
+
+          <button class="spin-btn" id="spinBtn" onclick="handleSpin()">开始抽奖</button>
+
+          <!-- Mode toggle: remove after win -->
+          <label class="mode-row">
+            <span class="mode-row__text">中奖后从转盘移除</span>
+            <span class="toggle">
+              <input type="checkbox" id="removeToggle" />
+              <span class="toggle__track"></span>
+            </span>
+          </label>
+        </div>
+      </section>
+
+      <!-- ④ Edit area -->
+      <section class="edit-section">
+        <div class="edit-panel">
+
+          <div class="section-header">
+            <span class="section-label">参与者名单</span>
+            <div class="section-line"></div>
+          </div>
+
+          <div class="stats-row">
+            <span>总人数 <b id="statCount">0</b></span>
+            <span>总权重 <b id="statWeight">0</b></span>
+          </div>
+
+          <!-- Warning when < 2 -->
+          <div class="notice hidden" id="notice">
+            至少需要 <b>2</b> 位参与者才能开始抽奖
+          </div>
+
+          <div class="btn-row">
+            <button class="add-btn" id="addBtn" onclick="addEntry()">
+              <span class="add-btn__icon">+</span>
+              添加参与者
+            </button>
+            <button class="clear-btn" onclick="clearAll()" title="清空全部">清空</button>
+          </div>
+
+          <div class="entries-list" id="entriesList"></div>
+
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Toast portal -->
+  <div id="toastRoot"></div>
+
+  <script>
+    /* ================================================================
+       Constants & Palette
+    ================================================================ */
+    const MAX_ENTRIES = 1000;
+
+    const PALETTE = [
+      '#FF6B6B', '#22D3EE', '#FFD166', '#A78BFA',
+      '#34D399', '#F472B6', '#60A5FA', '#FB923C',
+      '#C084FC', '#A3E635', '#FF8A80', '#4FC3F7',
+      '#FBBF24', '#E879F9', '#2DD4BF', '#FF7043',
+      '#7986CB', '#FCD34D', '#EC4899', '#6EE7B7',
+    ];
+
+    /* ================================================================
+       State
+    ================================================================ */
+    let entries = [];        // { id, title, weight }
+    let nextId = 1;
+    let spinning = false;
+    let modalOpen = false;
+    let rotation = 0;         // current canvas rotation (radians)
+    let rafId = null;
+
+    /* ================================================================
+       Boot
+    ================================================================ */
+    document.addEventListener('DOMContentLoaded', () => {
+      resizeCanvas();
+      addEntry('Player 1');
+      addEntry('Player 2');
+      addEntry('Player 3');
+      window.addEventListener('resize', () => { resizeCanvas(); redraw(); });
+      document.fonts.ready.then(() => redraw());
+    });
+
+    /* ================================================================
+       Canvas helpers
+    ================================================================ */
+    function getCanvas() { return document.getElementById('wheelCanvas'); }
+    function getCtx() { return getCanvas().getContext('2d'); }
+
+    function resizeCanvas() {
+      const canvas = getCanvas();
+      const col = canvas.closest('.wheel-section');
+      const avail = Math.min(col.clientWidth, window.innerHeight * 0.52, 480);
+      const size = Math.max(220, Math.floor(avail));
+      canvas.width = size;
+      canvas.height = size;
+    }
+
+    /* ================================================================
+       Draw wheel
+    ================================================================ */
+    function redraw(rot) {
+      if (rot !== undefined) rotation = rot;
+      drawWheel(rotation);
+    }
+
+    function drawWheel(rot) {
+      const canvas = getCanvas();
+      const ctx = getCtx();
+      const W = canvas.width, H = canvas.height;
+      const cx = W / 2, cy = H / 2;
+      const R = W / 2 - 4;
+
+      ctx.clearRect(0, 0, W, H);
+
+      /* ── empty state ─────────────────────────── */
+      if (entries.length === 0) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, 0, Math.PI * 2);
+        ctx.fillStyle = '#282828';
+        ctx.fill();
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = '#727272';
+        ctx.font = `600 ${Math.floor(W * 0.04)}px 'Noto Sans SC', sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('请添加参与者', cx, cy);
+        return;
+      }
+
+      /* ── one-entry full circle ───────────────── */
+      if (entries.length === 1) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, 0, Math.PI * 2);
+        ctx.fillStyle = entries[0].color;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        /* hide name when only 1 participant */
+        drawHub(ctx, cx, cy);
+        return;
+      }
+
+      /* ── segments ────────────────────────────── */
+      const total = entries.reduce((s, e) => s + (e.weight || 1), 0);
+      let angle = rot - Math.PI / 2;   // 0° at 12-o-clock
+
+      entries.forEach((entry, i) => {
+        const slice = (entry.weight / total) * Math.PI * 2;
+        const end = angle + slice;
+        const color = entry.color;
+
+        /* fill */
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, R, angle, end);
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+
+        /* thin separator */
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        /* label */
+        drawSegmentLabel(ctx, entry.title, angle, slice, cx, cy, R);
+
+        angle = end;
+      });
+
+      /* ── outer ring ─────── */
+      ctx.beginPath();
+      ctx.arc(cx, cy, R, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      drawHub(ctx, cx, cy);
+    }
+
+    function drawHub(ctx, cx, cy) {
+      /* outer circle */
+      ctx.beginPath();
+      ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+      ctx.fillStyle = '#1e1e1e';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      /* inner dot */
+      ctx.beginPath();
+      ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+      ctx.fillStyle = '#1DB954';
+      ctx.fill();
+    }
+
+    function drawCenterLabel(ctx, cx, cy, R, title) {
+      const fs = clamp(R * 0.10, 12, 22);
+      ctx.font = `700 ${fs}px 'Noto Sans SC', sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const label = title.length > 10 ? title.slice(0, 9) + '…' : title;
+      /* shadow */
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillText(label, cx + 1, cy + 1);
+      /* fill */
+      ctx.fillStyle = '#fff';
+      ctx.fillText(label, cx, cy);
+    }
+
+    /* ================================================================
+       Segment label — max 2 lines
+    ================================================================ */
+    function drawSegmentLabel(ctx, title, angle, slice, cx, cy, R) {
+      if (slice < 0.1) return;
+
+      const mid = angle + slice / 2;
+      const lr = R * 0.65;
+      const lx = cx + Math.cos(mid) * lr;
+      const ly = cy + Math.sin(mid) * lr;
+
+      const availW = 2 * lr * Math.sin(Math.min(slice, Math.PI) / 2) * 0.80;
+
+      const MAX_FS = 22, MIN_FS = 11;
+      let chosen = null;
+
+      for (let fs = MAX_FS; fs >= MIN_FS; fs--) {
+        ctx.font = `700 ${fs}px 'Noto Sans SC', sans-serif`;
+        const lines = labelTryFit(ctx, title, availW);
+        if (lines) { chosen = { fs, lines }; break; }
+      }
+
+      if (!chosen) {
+        ctx.font = `700 ${MIN_FS}px 'Noto Sans SC', sans-serif`;
+        chosen = { fs: MIN_FS, lines: labelForceFit(ctx, title, availW) };
+      }
+
+      const { fs, lines } = chosen;
+
+      ctx.save();
+      ctx.translate(lx, ly);
+      ctx.rotate(mid + Math.PI / 2);
+
+      ctx.font = `700 ${fs}px 'Noto Sans SC', sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      const lineH = fs * 1.1;
+      const startY = lines.length === 1 ? 0 : -lineH / 2;
+
+      lines.forEach((line, i) => {
+        const y = startY + i * lineH;
+        /* shadow */
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.fillText(line, 1, y + 1);
+        /* white fill */
+        ctx.fillStyle = '#fff';
+        ctx.fillText(line, 0, y);
+      });
+
+      ctx.restore();
+    }
+
+    // Try to fit in 1 line, then 2 lines. Returns array or null.
+    function labelTryFit(ctx, text, availW) {
+      if (ctx.measureText(text).width <= availW) return [text];
+
+      let best = null, bestDiff = Infinity;
+      for (let i = 1; i < text.length; i++) {
+        const a = text.slice(0, i);
+        const b = text.slice(i);
+        const wa = ctx.measureText(a).width;
+        const wb = ctx.measureText(b).width;
+        if (wa <= availW && wb <= availW) {
+          const diff = Math.abs(wa - wb);
+          if (diff < bestDiff) { bestDiff = diff; best = [a, b]; }
+        }
+      }
+      return best;
+    }
+
+    function labelForceFit(ctx, text, availW) {
+      const split = labelTryFit(ctx, text, availW);
+      if (split) return split;
+
+      let label = text;
+      while (label.length > 1 && ctx.measureText(label + '…').width > availW) {
+        label = label.slice(0, -1);
+      }
+      return [label + '…'];
+    }
+
+    /* ================================================================
+       Entry management
+    ================================================================ */
+    function addEntry(defaultTitle) {
+      if (entries.length >= MAX_ENTRIES) {
+        showToast(`最多支持 ${MAX_ENTRIES} 位参与者`);
+        return;
+      }
+      const id = nextId++;
+      const title = defaultTitle || `Player ${id}`;
+      const lastColor = entries.length > 0 ? entries[entries.length - 1].color : null;
+      const colorIdx = lastColor ? (PALETTE.indexOf(lastColor) + 1) % PALETTE.length : 0;
+      entries.push({ id, title, weight: 1, color: PALETTE[colorIdx] });
+      renderList();
+      redraw();
+      syncUI();
+    }
+
+    function deleteEntry(id) {
+      entries = entries.filter(e => e.id !== id);
+      renderList();
+      redraw();
+      syncUI();
+    }
+
+    function clearAll() {
+      if (entries.length === 0) return;
+      entries = [];
+      nextId = 1;
+      renderList();
+      redraw();
+      syncUI();
+    }
+
+    function cycleColor(id) {
+      const e = entries.find(e => e.id === id);
+      if (!e) return;
+      const idx = PALETTE.indexOf(e.color);
+      e.color = PALETTE[(idx + 1) % PALETTE.length];
+      renderList();
+      redraw();
+    }
+
+    function updateTitle(id, val) {
+      const e = entries.find(e => e.id === id);
+      if (e) { e.title = val; redraw(); }
+    }
+
+    function updateWeight(id, val) {
+      const e = entries.find(e => e.id === id);
+      if (!e) return;
+      const w = parseFloat(val);
+      e.weight = (!w || w < 0.1) ? 0.1 : Math.min(Math.round(w * 10) / 10, 99999);
+      redraw();
+      syncStats();
+    }
+
+    /* ================================================================
+       Render list DOM
+    ================================================================ */
+    function renderList() {
+      const list = document.getElementById('entriesList');
+      list.innerHTML = '';
+
+      [...entries].reverse().forEach((entry) => {
+        const row = document.createElement('div');
+        row.className = 'entry-row';
+        row.dataset.id = entry.id;
+
+        row.innerHTML = `
+      <span class="entry-dot" style="background:${entry.color}" onclick="cycleColor(${entry.id})" title="切换颜色"></span>
+      <input class="entry-input"
+             type="text"
+             value="${esc(entry.title)}"
+             placeholder="名称"
+             maxlength="30"
+             oninput="updateTitle(${entry.id}, this.value)" />
+      <div class="weight-sep"></div>
+      <span class="weight-label">权重</span>
+      <input class="weight-input"
+             type="number"
+             value="${entry.weight}"
+             min="0.1" max="99999" step="0.1"
+             oninput="updateWeight(${entry.id}, this.value)" />
+      <button class="del-btn" onclick="deleteEntry(${entry.id})" title="移除">✕</button>
+    `;
+        list.appendChild(row);
+      });
+    }
+
+    /* ================================================================
+       Sync UI state (button, notice, stats)
+    ================================================================ */
+    function syncUI() {
+      syncStats();
+      const btn = document.getElementById('spinBtn');
+      const notice = document.getElementById('notice');
+      const enough = entries.length >= 2;
+      btn.disabled = spinning;
+      document.getElementById('removeToggle').disabled = spinning;
+      notice.classList.toggle('hidden', enough);
+      updateLock();
+    }
+
+    function updateLock() {
+      const locked = spinning || modalOpen;
+      const panel = document.querySelector('.edit-panel');
+      if (panel) panel.classList.toggle('edit-locked', locked);
+    }
+
+    function syncStats() {
+      const total = entries.reduce((s, e) => s + (e.weight || 1), 0);
+      document.getElementById('statCount').textContent = entries.length;
+      document.getElementById('statWeight').textContent = Number.isInteger(total) ? total : total.toFixed(1);
+    }
+
+    /* ================================================================
+       Spin
+    ================================================================ */
+    function handleSpin() {
+      if (entries.length < 2) {
+        showToast('⚠️ 至少需要 2 位参与者才能开始抽奖');
+        return;
+      }
+      if (spinning) return;
+
+      spinning = true;
+      syncUI();
+
+      /* Random total rotation: 6~7 full spins + random extra angle */
+      const fullSpins = (6 + Math.random()) * Math.PI * 2;
+      const from = rotation;
+      const to = from + fullSpins;
+      const duration = 4200 + Math.random() * 1200;
+      const t0 = performance.now();
+
+      function tick(now) {
+        const t = Math.min((now - t0) / duration, 1);
+        const r = from + fullSpins * easeOutQuart(t);
+        drawWheel(r);
+
+        if (t < 1) {
+          rafId = requestAnimationFrame(tick);
+        } else {
+          rotation = to;
+          drawWheel(rotation);
+          spinning = false;
+          syncUI();
+
+          /* Determine winner from final pointer position */
+          const { winner, winIdx } = getWinnerAtPointer(rotation);
+          showResult(winner, winIdx);
+        }
+      }
+
+      rafId = requestAnimationFrame(tick);
+    }
+
+    /* Determine which segment the pointer (12-o-clock) lands on */
+    function getWinnerAtPointer(rot) {
+      const total = entries.reduce((s, e) => s + (e.weight || 1), 0);
+      /* Pointer is at 12-o-clock; wheel is rotated by rot from its initial position.
+         In drawWheel, angle starts at rot - PI/2, so the pointer points at
+         the angle = -rot (mod 2PI) within the unrotated segment layout. */
+      let pointerAngle = ((-rot % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+      let cum = 0;
+      for (let i = 0; i < entries.length; i++) {
+        cum += (entries[i].weight || 1) / total * Math.PI * 2;
+        if (pointerAngle < cum) return { winner: entries[i], winIdx: i };
+      }
+      return { winner: entries[entries.length - 1], winIdx: entries.length - 1 };
+    }
+
+    function easeOutQuart(t) { return 1 - Math.pow(1 - t, 4); }
+
+    /* ================================================================
+       Result modal
+    ================================================================ */
+    function showResult(winner, winIdx) {
+      closeModal();
+
+      const removeMode = document.getElementById('removeToggle').checked;
+      const color = winner.color;
+      const pct = ((winner.weight / entries.reduce((s, e) => s + (e.weight || 1), 0)) * 100).toFixed(1);
+
+      const overlay = document.createElement('div');
+      overlay.className = 'overlay';
+      overlay.id = 'resultOverlay';
+
+      overlay.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal__trophy">🎉</div>
+      <div class="modal__label">恭喜获奖者</div>
+      <div class="modal__winner" style="color:${color}">${esc(winner.title)}</div>
+      <div class="modal__weight">中奖概率 ${pct}%</div>
+      <div class="modal__actions">
+        <button class="btn btn--primary" onclick="spinAgain()">再抽一次</button>
+        <button class="btn btn--ghost"   onclick="closeModal()">关闭</button>
+      </div>
+    </div>`;
+
+      modalOpen = true;
+      document.body.appendChild(overlay);
+      updateLock();
+
+      overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+
+      /* Defer removal until modal is closed */
+      pendingRemoveId = removeMode ? winner.id : null;
+    }
+
+    let pendingRemoveId = null;
+
+    function closeModal() {
+      const el = document.getElementById('resultOverlay');
+      if (!el) return;
+      modalOpen = false;
+      updateLock();
+      el.classList.add('out');
+      setTimeout(() => {
+        el.remove();
+        if (pendingRemoveId !== null) {
+          entries = entries.filter(e => e.id !== pendingRemoveId);
+          pendingRemoveId = null;
+          renderList();
+          redraw();
+          syncUI();
+        }
+      }, 240);
+    }
+
+    function spinAgain() {
+      closeModal();
+      setTimeout(() => {
+        if (entries.length >= 2) handleSpin();
+        else showToast('⚠️ 参与者不足，无法继续抽奖');
+      }, 260);
+    }
+
+    /* ================================================================
+       Toast
+    ================================================================ */
+    function showToast(msg) {
+      const root = document.getElementById('toastRoot');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = msg;
+      root.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.add('out');
+        setTimeout(() => toast.remove(), 300);
+      }, 2800);
+    }
+
+    /* ================================================================
+       Utility
+    ================================================================ */
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+    function esc(str) {
+      return String(str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+
+</html>
