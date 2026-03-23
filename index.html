@@ -36,16 +36,38 @@
       --accent: #1DB954;
       --accent-hover: #1ed760;
       --accent-dim: rgba(29, 185, 84, 0.12);
+      --accent-glow: rgba(29, 185, 84, 0.35);
       --text: #ffffff;
       --text-secondary: #b3b3b3;
       --text-muted: #727272;
       --danger: #e74c3c;
       --danger-hover: #ff6b6b;
+      --warning: #ffc107;
+      --border: rgba(255, 255, 255, 0.1);
+      --border-light: rgba(255, 255, 255, 0.06);
       --radius-sm: 8px;
       --radius: 12px;
       --radius-lg: 32px;
       --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
       --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --duration: 0.18s;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
     }
 
     html {
@@ -60,6 +82,38 @@
       color: var(--text);
       font-weight: 500;
       position: relative;
+    }
+
+    /* Atmospheric glow behind the wheel */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 35%;
+      left: 25%;
+      width: 50vw;
+      height: 50vw;
+      max-width: 600px;
+      max-height: 600px;
+      background: radial-gradient(circle, rgba(29, 185, 84, 0.08) 0%, rgba(29, 185, 84, 0.03) 40%, transparent 70%);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body.spinning::before {
+      animation: glowPulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes glowPulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 1.8;
+      }
     }
 
     /* =============================================
@@ -86,23 +140,25 @@
     }
 
     .header__title {
-      font-size: clamp(1.8rem, 4.5vw, 2.8rem);
+      font-size: clamp(2rem, 5vw, 3.2rem);
       font-weight: 700;
       color: var(--text);
-      letter-spacing: 0.04em;
-      line-height: 1.2;
+      letter-spacing: 0.02em;
+      line-height: 1.1;
     }
 
     .header__title span {
       color: var(--accent);
+      text-shadow: 0 0 30px var(--accent-glow);
     }
 
     .header__sub {
-      margin-top: 4px;
-      color: var(--text-secondary);
-      font-weight: 500;
-      font-size: 0.9rem;
-      letter-spacing: 0.08em;
+      margin-top: 6px;
+      color: var(--text-muted);
+      font-weight: 700;
+      font-size: 0.72rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
     }
 
     /* =============================================
@@ -124,14 +180,14 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 0;
       min-height: 0;
     }
 
     .wheel-panel {
       background: var(--surface);
+      border: 1px solid var(--border-light);
       border-radius: var(--radius-lg);
-      box-shadow: var(--shadow);
+      box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.04);
       padding: 22px 18px 20px;
       width: 100%;
       flex: 1;
@@ -150,35 +206,8 @@
       align-items: center;
     }
 
-    /* Pointer */
-    .pointer {
-      position: relative;
-      z-index: 2;
-      width: 0;
-      height: 0;
-      border-left: 14px solid transparent;
-      border-right: 14px solid transparent;
-      border-top: 32px solid var(--accent);
-      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
-      margin-bottom: -2px;
-    }
-
-    .pointer::before {
-      content: '';
-      position: absolute;
-      top: -46px;
-      left: -8px;
-      width: 16px;
-      height: 16px;
-      background: var(--accent);
-      border-radius: 50%;
-      box-shadow: 0 0 8px rgba(29, 185, 84, 0.5);
-    }
-
     #wheelCanvas {
       display: block;
-      border-radius: 50%;
-      box-shadow: 0 0 0 3px var(--surface-light), 0 4px 16px rgba(0, 0, 0, 0.5);
     }
 
     /* =============================================
@@ -187,30 +216,61 @@
     .spin-btn {
       position: relative;
       width: 100%;
-      max-width: 260px;
-      padding: 14px 24px;
-      font-size: 1rem;
+      max-width: 280px;
+      padding: 16px 32px;
+      font-size: 1.1rem;
       font-weight: 700;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.06em;
       border: none;
       border-radius: 50px;
       cursor: pointer;
       background: var(--accent);
       color: #fff;
-      box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
-      transition: all 0.15s ease;
+      box-shadow: 0 4px 16px var(--accent-glow), 0 0 40px rgba(29, 185, 84, 0.12);
+      transition: background var(--duration) var(--ease-out),
+        transform var(--duration) var(--ease-out),
+        box-shadow var(--duration) var(--ease-out);
       -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+
+    /* Shimmer sweep */
+    .spin-btn::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 60%;
+      height: 100%;
+      background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.2) 50%, transparent 70%);
+      animation: shimmer 3s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0% {
+        left: -100%;
+      }
+
+      40%,
+      100% {
+        left: 150%;
+      }
     }
 
     .spin-btn:hover:not(:disabled) {
       background: var(--accent-hover);
-      transform: scale(1.02);
-      box-shadow: 0 6px 16px rgba(29, 185, 84, 0.4);
+      transform: scale(1.04);
+      box-shadow: 0 6px 24px var(--accent-glow), 0 0 60px rgba(29, 185, 84, 0.15);
     }
 
     .spin-btn:active:not(:disabled) {
-      transform: scale(0.98);
+      transform: scale(0.96);
       box-shadow: 0 2px 8px rgba(29, 185, 84, 0.2);
+    }
+
+    .spin-btn:focus-visible {
+      outline: 2px solid var(--accent-hover);
+      outline-offset: 3px;
     }
 
     .spin-btn:disabled {
@@ -218,6 +278,10 @@
       color: var(--text-muted);
       box-shadow: none;
       cursor: not-allowed;
+    }
+
+    .spin-btn:disabled::after {
+      display: none;
     }
 
     /* Mode toggle row */
@@ -258,10 +322,10 @@
     .toggle__track {
       position: absolute;
       inset: 0;
-      background: #4d4d4d;
+      background: var(--surface-hover);
       border: none;
       border-radius: 11px;
-      transition: background 0.25s;
+      transition: background 0.2s var(--ease-out);
       cursor: pointer;
     }
 
@@ -272,10 +336,10 @@
       height: 16px;
       top: 3px;
       left: 3px;
-      background: #fff;
+      background: var(--text);
       border: none;
       border-radius: 50%;
-      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      transition: transform 0.2s var(--ease-out);
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
 
@@ -293,14 +357,14 @@
     .edit-section {
       display: flex;
       flex-direction: column;
-      gap: 0;
       min-height: 0;
     }
 
     .edit-panel {
       background: var(--surface);
+      border: 1px solid var(--border-light);
       border-radius: var(--radius-lg);
-      box-shadow: var(--shadow);
+      box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.04);
       padding: 24px 24px 20px;
       flex: 1;
       min-height: 0;
@@ -309,25 +373,92 @@
       position: relative;
     }
 
-    .edit-panel.edit-locked::after {
-      content: '🔒\A抽奖进行中';
-      white-space: pre;
+    /* Lock overlay — injected via JS for richer layout */
+    .lock-overlay {
       position: absolute;
       inset: 0;
-      background: rgba(18, 18, 18, 0.85);
       border-radius: var(--radius-lg);
       z-index: 10;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      font-size: 1rem;
-      font-weight: 600;
-      color: var(--text-secondary);
-      letter-spacing: 0.04em;
+      gap: 6px;
       cursor: not-allowed;
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
+      background: rgba(12, 12, 12, 0.82);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      animation: lockIn 0.3s var(--ease-out) both;
+    }
+
+    .lock-overlay.out {
+      animation: lockOut 0.25s ease both;
+    }
+
+    @keyframes lockIn {
+      from {
+        opacity: 0;
+        backdrop-filter: blur(0);
+      }
+
+      to {
+        opacity: 1;
+        backdrop-filter: blur(8px);
+      }
+    }
+
+    @keyframes lockOut {
+      from {
+        opacity: 1;
+      }
+
+      to {
+        opacity: 0;
+      }
+    }
+
+    .lock-overlay__text {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: var(--text-secondary);
+    }
+
+    .lock-overlay__dots {
+      display: inline-flex;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .lock-overlay__dots span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: dotBounce 1.2s ease-in-out infinite;
+    }
+
+    .lock-overlay__dots span:nth-child(2) {
+      animation-delay: 0.15s;
+    }
+
+    .lock-overlay__dots span:nth-child(3) {
+      animation-delay: 0.3s;
+    }
+
+    @keyframes dotBounce {
+
+      0%,
+      60%,
+      100% {
+        opacity: 0.3;
+        transform: scale(1);
+      }
+
+      30% {
+        opacity: 1;
+        transform: scale(1.6);
+      }
     }
 
     .section-header {
@@ -340,10 +471,7 @@
     .section-label {
       font-size: 1.2rem;
       font-weight: 700;
-      color: #fff;
-      /* background: var(--accent); */
-      border-radius: 20px;
-      /* padding: 4px 14px; */
+      color: var(--text);
       white-space: nowrap;
       letter-spacing: 0.06em;
     }
@@ -410,8 +538,8 @@
       border: none;
       border-radius: var(--radius-sm);
       padding: 8px 12px;
-      animation: rowIn 0.2s ease both;
-      transition: background 0.15s;
+      animation: rowIn 0.25s var(--ease-out) both;
+      transition: background var(--duration);
     }
 
     .entry-row:hover {
@@ -421,7 +549,7 @@
     @keyframes rowIn {
       from {
         opacity: 0;
-        transform: translateY(8px);
+        transform: translateY(6px);
       }
 
       to {
@@ -431,23 +559,23 @@
     }
 
     .entry-dot {
-      width: 10px;
-      height: 10px;
+      width: 12px;
+      height: 12px;
       border-radius: 50%;
       flex-shrink: 0;
       border: none;
       cursor: pointer;
-      transition: transform 0.15s;
+      transition: transform var(--duration) var(--ease-out);
     }
 
     .entry-dot:hover {
-      transform: scale(1.5);
+      transform: scale(1.4);
     }
 
     .entry-input {
       flex: 1;
       background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--border);
       border-radius: 6px;
       outline: none;
       color: var(--text);
@@ -456,7 +584,7 @@
       padding: 4px 8px;
       min-width: 0;
       caret-color: var(--accent);
-      transition: background 0.15s, border-color 0.15s;
+      transition: background var(--duration), border-color var(--duration);
     }
 
     .entry-input:focus {
@@ -472,7 +600,7 @@
     .weight-sep {
       width: 1px;
       height: 16px;
-      background: rgba(255, 255, 255, 0.1);
+      background: var(--border);
       flex-shrink: 0;
     }
 
@@ -488,15 +616,24 @@
       width: 50px;
       padding: 4px 5px;
       background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--border);
       border-radius: 6px;
       color: var(--text);
       font-size: 0.84rem;
       font-weight: 500;
       text-align: center;
       outline: none;
-      transition: background 0.15s, border-color 0.15s;
+      transition: background var(--duration), border-color var(--duration);
       flex-shrink: 0;
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+
+    .weight-input::-webkit-inner-spin-button,
+    .weight-input::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      appearance: none;
+      margin: 0;
     }
 
     .weight-input:focus {
@@ -506,8 +643,8 @@
 
     /* Delete button */
     .del-btn {
-      width: 26px;
-      height: 26px;
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
       border: none;
       background: transparent;
@@ -519,13 +656,17 @@
       font-size: 0.8rem;
       font-weight: 700;
       line-height: 1;
-      transition: all 0.15s;
+      transition: background var(--duration), color var(--duration), transform var(--duration);
       flex-shrink: 0;
     }
 
     .del-btn:hover {
       background: rgba(231, 76, 60, 0.15);
       color: var(--danger-hover);
+    }
+
+    .del-btn:active {
+      transform: scale(0.9);
     }
 
     /* Add button */
@@ -549,20 +690,30 @@
       font-size: 0.9rem;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.15s;
+      transition: background var(--duration), border-color var(--duration), color var(--duration), transform var(--duration);
       -webkit-tap-highlight-color: transparent;
+    }
+
+    .add-btn:hover {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .add-btn:active {
+      transform: scale(0.98);
     }
 
     .clear-btn {
       padding: 10px 14px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       background: transparent;
       color: var(--text-muted);
       font-size: 0.82rem;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.15s;
+      transition: background var(--duration), border-color var(--duration), color var(--duration), transform var(--duration);
       white-space: nowrap;
     }
 
@@ -572,10 +723,8 @@
       color: var(--danger-hover);
     }
 
-    .add-btn:hover {
-      background: var(--accent-dim);
-      border-color: var(--accent);
-      color: var(--accent);
+    .clear-btn:active {
+      transform: scale(0.97);
     }
 
     .add-btn__icon {
@@ -598,12 +747,12 @@
       align-items: center;
       gap: 8px;
       padding: 10px 14px;
-      background: rgba(255, 193, 7, 0.1);
-      border: 1px solid rgba(255, 193, 7, 0.25);
+      background: rgba(255, 193, 7, 0.08);
+      border: 1px solid rgba(255, 193, 7, 0.2);
       border-radius: var(--radius-sm);
       font-size: 0.82rem;
       font-weight: 600;
-      color: #ffc107;
+      color: var(--warning);
       margin-bottom: 10px;
     }
 
@@ -630,14 +779,14 @@
     .toast {
       padding: 12px 24px;
       background: var(--surface-light);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--border);
       border-radius: 50px;
       font-size: 0.88rem;
       font-weight: 600;
       color: var(--text);
       white-space: nowrap;
       box-shadow: var(--shadow-lg);
-      animation: toastIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+      animation: toastIn 0.3s var(--ease-out) both;
     }
 
     .toast.out {
@@ -679,9 +828,9 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      animation: fadeIn 0.22s ease both;
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
+      animation: fadeIn 0.2s ease both;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
     }
 
     .overlay.out {
@@ -700,21 +849,36 @@
 
     .modal {
       background: var(--surface);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border-light);
       border-radius: var(--radius-lg);
-      padding: 48px 48px;
+      padding: 52px 48px 44px;
       text-align: center;
-      width: min(380px, 92vw);
-      box-shadow: var(--shadow-lg);
-      animation: modalIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+      width: min(400px, 92vw);
+      box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      animation: modalIn 0.45s var(--ease-out) both;
       position: relative;
       overflow: hidden;
+    }
+
+    /* Winner color glow behind modal */
+    .modal::before {
+      content: '';
+      position: absolute;
+      top: -40%;
+      left: 50%;
+      width: 120%;
+      height: 80%;
+      transform: translateX(-50%);
+      background: var(--winner-color, var(--accent));
+      opacity: 0.06;
+      filter: blur(60px);
+      pointer-events: none;
     }
 
     @keyframes modalIn {
       from {
         opacity: 0;
-        transform: scale(0.85);
+        transform: scale(0.85) translateY(12px);
       }
 
       to {
@@ -724,29 +888,58 @@
     }
 
     .modal__trophy {
-      font-size: 3rem;
-      margin-bottom: 8px;
+      font-size: 4rem;
+      margin-bottom: 4px;
       line-height: 1;
+      animation: trophyBounce 0.6s 0.2s var(--ease-out) both;
+    }
+
+    @keyframes trophyBounce {
+      0% {
+        opacity: 0;
+        transform: scale(0) rotate(-15deg);
+      }
+
+      60% {
+        transform: scale(1.2) rotate(5deg);
+      }
+
+      100% {
+        opacity: 1;
+        transform: scale(1) rotate(0);
+      }
     }
 
     .modal__label {
-      font-size: 0.78rem;
+      font-size: 0.72rem;
       font-weight: 700;
-      letter-spacing: 0.1em;
-      color: #fff;
-      /* background: var(--accent); */
-      border-radius: 20px;
-      padding: 4px 16px;
-      /* display: inline-block; */
-      margin: 20px 0px;
+      letter-spacing: 0.2em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin: 16px 0 8px;
     }
 
     .modal__winner {
-      font-size: clamp(1.5rem, 5vw, 2.2rem);
+      font-size: clamp(1.8rem, 6vw, 2.8rem);
       font-weight: 700;
       word-break: break-word;
-      line-height: 1.3;
-      margin-bottom: 20px;
+      line-height: 1.2;
+      margin-bottom: 8px;
+      animation: winnerReveal 0.5s 0.3s var(--ease-out) both;
+    }
+
+    @keyframes winnerReveal {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+        filter: blur(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: none;
+        filter: blur(0);
+      }
     }
 
     .modal__weight {
@@ -754,6 +947,42 @@
       color: var(--text-muted);
       font-weight: 500;
       margin-bottom: 32px;
+      animation: winnerReveal 0.4s 0.45s var(--ease-out) both;
+    }
+
+    /* Confetti particles */
+    .modal__confetti {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .modal__confetti span {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-radius: 1px;
+      top: 50%;
+      left: 50%;
+      animation: confettiBurst 0.8s var(--ease-out) forwards;
+    }
+
+    @keyframes confettiBurst {
+      0% {
+        opacity: 1;
+        transform: translate(0, 0) rotate(0deg) scale(0);
+      }
+
+      30% {
+        opacity: 1;
+        transform: translate(var(--cx), var(--cy)) rotate(180deg) scale(1);
+      }
+
+      100% {
+        opacity: 0;
+        transform: translate(var(--cx), calc(var(--cy) + 40px)) rotate(360deg) scale(0.5);
+      }
     }
 
     .modal__actions {
@@ -769,37 +998,47 @@
       font-size: 0.9rem;
       font-weight: 700;
       cursor: pointer;
-      transition: all 0.15s;
+      transition: background var(--duration) var(--ease-out),
+        border-color var(--duration) var(--ease-out),
+        transform var(--duration) var(--ease-out),
+        box-shadow var(--duration) var(--ease-out);
       -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
     }
 
     .btn--ghost {
       background: transparent;
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.15);
       color: var(--text-secondary);
     }
 
     .btn--ghost:hover {
       background: rgba(255, 255, 255, 0.05);
-      border-color: rgba(255, 255, 255, 0.3);
+      border-color: rgba(255, 255, 255, 0.25);
     }
 
     .btn--ghost:active {
-      transform: scale(0.98);
+      transform: scale(0.97);
     }
 
     .btn--primary {
       background: var(--accent);
       border: none;
       color: #fff;
+      box-shadow: 0 4px 12px var(--accent-glow);
     }
 
     .btn--primary:hover {
       background: var(--accent-hover);
+      box-shadow: 0 6px 20px var(--accent-glow);
     }
 
     .btn--primary:active {
-      transform: scale(0.98);
+      transform: scale(0.97);
     }
 
     /* =============================================
@@ -878,8 +1117,7 @@
       <section class="wheel-section">
         <div class="wheel-panel">
           <div class="wheel-wrap">
-            <div class="pointer"></div>
-            <canvas id="wheelCanvas"></canvas>
+            <canvas id="wheelCanvas" role="img" aria-label="抽奖转盘"></canvas>
           </div>
 
           <button class="spin-btn" id="spinBtn" onclick="handleSpin()">开始抽奖</button>
@@ -910,8 +1148,8 @@
           </div>
 
           <!-- Warning when < 2 -->
-          <div class="notice hidden" id="notice">
-            至少需要 <b>2</b> 位参与者才能开始抽奖
+          <div class="notice hidden" id="notice" role="alert">
+            <span aria-hidden="true">⚠</span> 至少需要 <b>2</b> 位参与者才能开始抽奖
           </div>
 
           <div class="btn-row">
@@ -956,6 +1194,17 @@
     let rotation = 0;         // current canvas rotation (radians)
     let rafId = null;
 
+    /* Lights state: 'idle' | 'spinning' | 'allOn' */
+    let lightsState = 'idle';
+    let lightsT = 0;          // spin progress 0→1, controls blink speed
+    let lightsStartTime = 0;  // timestamp when spin started, for stable blink phase
+    const NUM_LIGHTS = 24;
+    const LIGHT_COLORS = [
+      '#FF6B6B', '#FFD166', '#22D3EE', '#A78BFA',
+      '#34D399', '#F472B6', '#60A5FA', '#FB923C',
+      '#C084FC', '#A3E635', '#FBBF24', '#E879F9',
+    ];
+
     /* ================================================================
        Boot
     ================================================================ */
@@ -996,20 +1245,42 @@
       const ctx = getCtx();
       const W = canvas.width, H = canvas.height;
       const cx = W / 2, cy = H / 2;
-      const R = W / 2 - 4;
+      const lightMargin = Math.max(18, W * 0.042);
+      const R = W / 2 - lightMargin - 6;
+      const borderR = R + lightMargin / 2 + 1;  // center of the border ring
 
       ctx.clearRect(0, 0, W, H);
 
+      /* ── border ring (track for lights) ──────── */
+      ctx.beginPath();
+      ctx.arc(cx, cy, borderR, 0, Math.PI * 2);
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(cx, cy, borderR + lightMargin * 0.45, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx, cy, borderR - lightMargin * 0.45, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      /* ── lights ──────────────────────────────── */
+      drawLights(ctx, cx, cy, borderR, W);
+
       /* ── empty state ─────────────────────────── */
       if (entries.length === 0) {
+        const style = getComputedStyle(document.documentElement);
         ctx.beginPath();
         ctx.arc(cx, cy, R, 0, Math.PI * 2);
-        ctx.fillStyle = '#282828';
+        ctx.fillStyle = style.getPropertyValue('--surface-light').trim();
         ctx.fill();
-        ctx.strokeStyle = '#333';
+        ctx.strokeStyle = style.getPropertyValue('--surface-hover').trim();
         ctx.lineWidth = 2;
         ctx.stroke();
-        ctx.fillStyle = '#727272';
+        ctx.fillStyle = style.getPropertyValue('--text-muted').trim();
         ctx.font = `600 ${Math.floor(W * 0.04)}px 'Noto Sans SC', sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -1027,7 +1298,7 @@
         ctx.lineWidth = 2;
         ctx.stroke();
         /* hide name when only 1 participant */
-        drawHub(ctx, cx, cy);
+        drawHub(ctx, cx, cy, R);
         return;
       }
 
@@ -1059,45 +1330,142 @@
         angle = end;
       });
 
-      /* ── outer ring ─────── */
+      /* ── outer ring — thick decorative border ─────── */
       ctx.beginPath();
       ctx.arc(cx, cy, R, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      /* thin highlight ring just inside */
+      ctx.beginPath();
+      ctx.arc(cx, cy, R - 2, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      drawHub(ctx, cx, cy, R);
+    }
+
+    function drawHub(ctx, cx, cy, R) {
+      const style = getComputedStyle(document.documentElement);
+      const surface = style.getPropertyValue('--surface').trim();
+      const accent = style.getPropertyValue('--accent').trim();
+
+      const hubR = 22;
+      const needleLen = (R - hubR) * 0.25;
+      const needleW = 10;
+      const needleTip = cy - hubR - needleLen;
+
+      /* ── needle ────────────────────────────── */
+      ctx.beginPath();
+      ctx.moveTo(cx - needleW, cy - hubR + 4);
+      ctx.lineTo(cx, needleTip);
+      ctx.lineTo(cx + needleW, cy - hubR + 4);
+      ctx.closePath();
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      /* ── hub shadow ────────────────────────── */
+      ctx.beginPath();
+      ctx.arc(cx, cy, hubR + 1, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.1)';
+      ctx.fill();
+
+      /* ── hub outer ring ────────────────────── */
+      ctx.beginPath();
+      ctx.arc(cx, cy, hubR, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.1)';
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      drawHub(ctx, cx, cy);
-    }
-
-    function drawHub(ctx, cx, cy) {
-      /* outer circle */
+      /* ── inner accent circle ───────────────── */
       ctx.beginPath();
-      ctx.arc(cx, cy, 18, 0, Math.PI * 2);
-      ctx.fillStyle = '#1e1e1e';
+      ctx.arc(cx, cy, 10, 0, Math.PI * 2);
+      ctx.fillStyle = accent;
       ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-      ctx.lineWidth = 2;
-      ctx.stroke();
 
-      /* inner dot */
+      /* ── accent glow ───────────────────────── */
       ctx.beginPath();
-      ctx.arc(cx, cy, 6, 0, Math.PI * 2);
-      ctx.fillStyle = '#1DB954';
+      ctx.arc(cx, cy, 10, 0, Math.PI * 2);
+      const glowGrad = ctx.createRadialGradient(cx, cy, 4, cx, cy, 14);
+      glowGrad.addColorStop(0, 'rgba(29,185,84,0.3)');
+      glowGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = glowGrad;
       ctx.fill();
     }
 
-    function drawCenterLabel(ctx, cx, cy, R, title) {
-      const fs = clamp(R * 0.10, 12, 22);
-      ctx.font = `700 ${fs}px 'Noto Sans SC', sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      const label = title.length > 10 ? title.slice(0, 9) + '…' : title;
-      /* shadow */
-      ctx.fillStyle = 'rgba(0,0,0,0.4)';
-      ctx.fillText(label, cx + 1, cy + 1);
-      /* fill */
-      ctx.fillStyle = '#fff';
-      ctx.fillText(label, cx, cy);
+    /* ================================================================
+       Lights ring
+    ================================================================ */
+    function drawLights(ctx, cx, cy, ringR, W) {
+      const r = Math.max(4, W * 0.015);  // bulb radius
+      const now = performance.now();
+
+      for (let i = 0; i < NUM_LIGHTS; i++) {
+        const a = ((i + 0.5) / NUM_LIGHTS) * Math.PI * 2 - Math.PI / 2;
+        const lx = cx + Math.cos(a) * ringR;
+        const ly = cy + Math.sin(a) * ringR;
+        const color = LIGHT_COLORS[i % LIGHT_COLORS.length];
+
+        let lit = false;
+
+        if (lightsState === 'allOn') {
+          lit = true;
+        } else if (lightsState === 'spinning') {
+          const speed = 80 + 320 * lightsT;
+          const elapsed = now - lightsStartTime;
+          const phase = Math.floor(elapsed / speed);
+          lit = (i + phase) % 2 === 0;
+        }
+
+        if (lit) {
+          /* outer glow */
+          ctx.beginPath();
+          ctx.arc(lx, ly, r * 3, 0, Math.PI * 2);
+          const glow = ctx.createRadialGradient(lx, ly, r * 0.5, lx, ly, r * 3);
+          glow.addColorStop(0, color + '50');
+          glow.addColorStop(1, 'transparent');
+          ctx.fillStyle = glow;
+          ctx.fill();
+
+          /* bright bulb */
+          ctx.beginPath();
+          ctx.arc(lx, ly, r, 0, Math.PI * 2);
+          ctx.fillStyle = color;
+          ctx.fill();
+
+          /* inner bright core */
+          ctx.beginPath();
+          ctx.arc(lx, ly, r * 0.5, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255,255,255,0.45)';
+          ctx.fill();
+        } else {
+          /* dim bulb — tinted with its color */
+          ctx.beginPath();
+          ctx.arc(lx, ly, r, 0, Math.PI * 2);
+          ctx.fillStyle = '#222';
+          ctx.fill();
+
+          /* faint color hint */
+          ctx.beginPath();
+          ctx.arc(lx, ly, r, 0, Math.PI * 2);
+          ctx.fillStyle = color + '18';
+          ctx.fill();
+
+          /* subtle edge */
+          ctx.beginPath();
+          ctx.arc(lx, ly, r, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
     }
 
     /* ================================================================
@@ -1252,21 +1620,23 @@
         row.dataset.id = entry.id;
 
         row.innerHTML = `
-      <span class="entry-dot" style="background:${entry.color}" onclick="cycleColor(${entry.id})" title="切换颜色"></span>
+      <span class="entry-dot" style="background:${entry.color}" onclick="cycleColor(${entry.id})" role="button" tabindex="0" title="切换颜色" aria-label="切换颜色" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();cycleColor(${entry.id})}"></span>
       <input class="entry-input"
              type="text"
              value="${esc(entry.title)}"
              placeholder="名称"
              maxlength="30"
+             aria-label="参与者名称"
              oninput="updateTitle(${entry.id}, this.value)" />
-      <div class="weight-sep"></div>
-      <span class="weight-label">权重</span>
+      <div class="weight-sep" aria-hidden="true"></div>
+      <span class="weight-label" id="wl-${entry.id}">权重</span>
       <input class="weight-input"
              type="number"
              value="${entry.weight}"
              min="0.1" max="99999" step="0.1"
+             aria-labelledby="wl-${entry.id}"
              oninput="updateWeight(${entry.id}, this.value)" />
-      <button class="del-btn" onclick="deleteEntry(${entry.id})" title="移除">✕</button>
+      <button class="del-btn" onclick="deleteEntry(${entry.id})" title="移除" aria-label="移除 ${esc(entry.title)}">✕</button>
     `;
         list.appendChild(row);
       });
@@ -1289,7 +1659,22 @@
     function updateLock() {
       const locked = spinning || modalOpen;
       const panel = document.querySelector('.edit-panel');
-      if (panel) panel.classList.toggle('edit-locked', locked);
+      if (!panel) return;
+      const existing = panel.querySelector('.lock-overlay');
+
+      if (locked && !existing) {
+        const el = document.createElement('div');
+        el.className = 'lock-overlay';
+        el.innerHTML = `
+          <span class="lock-overlay__text">抽奖进行中</span>
+          <div class="lock-overlay__dots">
+            <span></span><span></span><span></span>
+          </div>`;
+        panel.appendChild(el);
+      } else if (!locked && existing) {
+        existing.classList.add('out');
+        setTimeout(() => existing.remove(), 250);
+      }
     }
 
     function syncStats() {
@@ -1309,26 +1694,36 @@
       if (spinning) return;
 
       spinning = true;
+      lightsState = 'spinning';
+      lightsT = 0;
+      lightsStartTime = performance.now();
+      document.body.classList.add('spinning');
       syncUI();
 
       /* Random total rotation: 6~7 full spins + random extra angle */
       const fullSpins = (6 + Math.random()) * Math.PI * 2;
       const from = rotation;
       const to = from + fullSpins;
-      const duration = 4200 + Math.random() * 1200;
+      const duration = 4500 + Math.random() * 1200;
       const t0 = performance.now();
 
       function tick(now) {
         const t = Math.min((now - t0) / duration, 1);
-        const r = from + fullSpins * easeOutQuart(t);
+        lightsT = t;
+        const r = from + fullSpins * easeOutQuint(t);
         drawWheel(r);
 
         if (t < 1) {
           rafId = requestAnimationFrame(tick);
         } else {
           rotation = to;
+
+          /* All lights ON for the reveal moment */
+          lightsState = 'allOn';
           drawWheel(rotation);
+
           spinning = false;
+          document.body.classList.remove('spinning');
           syncUI();
 
           /* Determine winner from final pointer position */
@@ -1355,7 +1750,7 @@
       return { winner: entries[entries.length - 1], winIdx: entries.length - 1 };
     }
 
-    function easeOutQuart(t) { return 1 - Math.pow(1 - t, 4); }
+    function easeOutQuint(t) { return 1 - Math.pow(1 - t, 5); }
 
     /* ================================================================
        Result modal
@@ -1371,11 +1766,25 @@
       overlay.className = 'overlay';
       overlay.id = 'resultOverlay';
 
+      /* Build confetti particles */
+      const confettiColors = ['#FF6B6B', '#22D3EE', '#FFD166', '#A78BFA', '#34D399', '#F472B6', '#FB923C', '#A3E635'];
+      let confettiHTML = '';
+      for (let i = 0; i < 24; i++) {
+        const angle = (i / 24) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+        const dist = 60 + Math.random() * 80;
+        const cx = Math.cos(angle) * dist;
+        const cy = Math.sin(angle) * dist - 20;
+        const c = confettiColors[i % confettiColors.length];
+        const delay = Math.random() * 0.15;
+        confettiHTML += `<span style="background:${c};--cx:${cx.toFixed(0)}px;--cy:${cy.toFixed(0)}px;animation-delay:${delay.toFixed(2)}s"></span>`;
+      }
+
       overlay.innerHTML = `
-    <div class="modal" role="dialog" aria-modal="true">
-      <div class="modal__trophy">🎉</div>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalWinner" style="--winner-color:${color}">
+      <div class="modal__confetti">${confettiHTML}</div>
+      <div class="modal__trophy" aria-hidden="true">🎉</div>
       <div class="modal__label">恭喜获奖者</div>
-      <div class="modal__winner" style="color:${color}">${esc(winner.title)}</div>
+      <div class="modal__winner" id="modalWinner" style="color:${color}">${esc(winner.title)}</div>
       <div class="modal__weight">中奖概率 ${pct}%</div>
       <div class="modal__actions">
         <button class="btn btn--primary" onclick="spinAgain()">再抽一次</button>
@@ -1387,7 +1796,11 @@
       document.body.appendChild(overlay);
       updateLock();
 
+      const primaryBtn = overlay.querySelector('.btn--primary');
+      if (primaryBtn) primaryBtn.focus();
+
       overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+      overlay.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
       /* Defer removal until modal is closed */
       pendingRemoveId = removeMode ? winner.id : null;
@@ -1399,6 +1812,7 @@
       const el = document.getElementById('resultOverlay');
       if (!el) return;
       modalOpen = false;
+      lightsState = 'idle';
       updateLock();
       el.classList.add('out');
       setTimeout(() => {
@@ -1407,9 +1821,9 @@
           entries = entries.filter(e => e.id !== pendingRemoveId);
           pendingRemoveId = null;
           renderList();
-          redraw();
           syncUI();
         }
+        redraw();
       }, 240);
     }
 
