@@ -77,7 +77,7 @@
     body {
       font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
       background: var(--bg);
-      height: 100vh;
+      height: 100dvh;
       overflow: hidden;
       color: var(--text);
       font-weight: 500;
@@ -122,7 +122,7 @@
     .app {
       display: flex;
       flex-direction: column;
-      height: 100vh;
+      height: 100dvh;
       max-width: 1160px;
       margin: 0 auto;
       padding: 24px 20px 28px;
@@ -1053,12 +1053,21 @@
 
       .app {
         height: auto;
-        min-height: 100vh;
+        min-height: 100dvh;
+        padding: 12px 10px 24px;
+      }
+
+      .header {
+        margin-bottom: 12px;
+      }
+
+      .header__sub {
+        display: none;
       }
 
       .content {
         grid-template-columns: 1fr;
-        gap: 16px;
+        gap: 12px;
         align-items: start;
         min-height: unset;
       }
@@ -1071,6 +1080,12 @@
         flex: none;
         min-height: unset;
         justify-content: flex-start;
+        padding: 14px 12px 16px;
+        gap: 16px;
+      }
+
+      .spin-btn {
+        padding: 14px 28px;
       }
 
       .edit-section {
@@ -1080,15 +1095,12 @@
       .edit-panel {
         flex: none;
         min-height: unset;
+        padding: 16px 14px 14px;
       }
 
       .entries-list {
         flex: none;
-        max-height: 60vh;
-      }
-
-      .app {
-        padding: 16px 12px 36px;
+        max-height: 50vh;
       }
     }
 
@@ -1225,8 +1237,18 @@
 
     function resizeCanvas() {
       const canvas = getCanvas();
-      const col = canvas.closest('.wheel-section');
-      const avail = Math.min(col.clientWidth, window.innerHeight * 0.52, 480);
+      const wrap = canvas.closest('.wheel-wrap');
+      const isMobile = window.innerWidth <= 720;
+      let avail;
+      if (isMobile) {
+        /* On mobile: use full width minus panel padding, capped to keep
+           the button and toggle visible without scrolling past the wheel */
+        const wrapW = wrap.clientWidth || window.innerWidth - 44;
+        avail = Math.min(wrapW, window.innerWidth - 44, 480);
+      } else {
+        const col = canvas.closest('.wheel-section');
+        avail = Math.min(col.clientWidth, window.innerHeight * 0.52, 480);
+      }
       const size = Math.max(220, Math.floor(avail));
       canvas.width = size;
       canvas.height = size;
