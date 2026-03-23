@@ -226,66 +226,79 @@
       font-size: 1.1rem;
       font-weight: 700;
       letter-spacing: 0.06em;
-      border: none;
       border-radius: 50px;
       cursor: pointer;
-      background: var(--accent);
-      color: #fff;
-      box-shadow: 0 4px 16px var(--accent-glow), 0 0 40px rgba(29, 185, 84, 0.12);
+      /* Glass light style — matches on.design dark-mode variant */
+      background: rgba(255, 255, 255, 0.92);
+      color: rgba(0, 0, 0, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.82);
+      box-shadow: inset 0 1px rgba(255, 255, 255, 0.96), 0 12px 26px rgba(0, 0, 0, 0.42);
+      -webkit-backdrop-filter: blur(24px) saturate(170%);
+      backdrop-filter: blur(24px) saturate(170%);
+      isolation: isolate;
+      transform: translateZ(0);
       transition: background var(--duration) var(--ease-out),
-        transform var(--duration) var(--ease-out),
+        transform 0.54s var(--ease-out),
         box-shadow var(--duration) var(--ease-out);
       -webkit-tap-highlight-color: transparent;
       overflow: hidden;
     }
 
-    /* Shimmer sweep */
-    .spin-btn::after {
-      content: '';
+    /* Rainbow hover overlay */
+    .spin-btn__rainbow {
       position: absolute;
-      top: 0;
-      left: -100%;
-      width: 60%;
-      height: 100%;
-      background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.2) 50%, transparent 70%);
-      animation: shimmer 3s ease-in-out infinite;
+      inset: 0;
+      pointer-events: none;
+      border-radius: inherit;
+      opacity: 0.2;
+      transition: opacity 0.5s ease;
     }
 
-    @keyframes shimmer {
-      0% {
-        left: -100%;
-      }
+    /* Sparkle canvas */
+    .spin-btn__canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      border-radius: inherit;
+      mix-blend-mode: overlay;
+    }
 
-      40%,
-      100% {
-        left: 150%;
-      }
+    .spin-btn__text {
+      position: relative;
+      z-index: 1;
+    }
+
+    .spin-btn:hover:not(:disabled) .spin-btn__rainbow {
+      opacity: 0.75;
     }
 
     .spin-btn:hover:not(:disabled) {
-      background: var(--accent-hover);
+      background: rgba(255, 255, 255, 0.98);
       transform: scale(1.04);
-      box-shadow: 0 6px 24px var(--accent-glow), 0 0 60px rgba(29, 185, 84, 0.15);
+      box-shadow: inset 0 1px rgba(255, 255, 255, 0.96), 0 16px 32px rgba(0, 0, 0, 0.50);
     }
 
     .spin-btn:active:not(:disabled) {
       transform: scale(0.96);
-      box-shadow: 0 2px 8px rgba(29, 185, 84, 0.2);
     }
 
     .spin-btn:focus-visible {
-      outline: 2px solid var(--accent-hover);
+      outline: 2px solid rgba(255, 255, 255, 0.7);
       outline-offset: 3px;
     }
 
     .spin-btn:disabled {
       background: var(--surface-light);
       color: var(--text-muted);
+      border-color: transparent;
       box-shadow: none;
       cursor: not-allowed;
     }
 
-    .spin-btn:disabled::after {
+    .spin-btn:disabled .spin-btn__rainbow,
+    .spin-btn:disabled .spin-btn__canvas {
       display: none;
     }
 
@@ -1137,7 +1150,11 @@
             <canvas id="wheelCanvas" role="img" aria-label="抽奖转盘"></canvas>
           </div>
 
-          <button class="spin-btn" id="spinBtn" onclick="handleSpin()">开始抽奖</button>
+          <button class="spin-btn" id="spinBtn" onclick="handleSpin()">
+            <div class="spin-btn__rainbow" id="spinBtnRainbow"></div>
+            <canvas class="spin-btn__canvas" id="spinBtnCanvas"></canvas>
+            <span class="spin-btn__text">开始抽奖</span>
+          </button>
 
           <!-- Mode toggle: remove after win -->
           <label class="mode-row">
@@ -1250,6 +1267,14 @@
       } else {
         const col = canvas.closest('.wheel-section');
         avail = Math.min(col.clientWidth, window.innerHeight * 0.52, 480);
+      }
+      // Clamp by the panel's inner width so max-width: 100% never causes height > width
+      const panel = canvas.closest('.wheel-panel');
+      if (panel) {
+        const ps = getComputedStyle(panel);
+        const innerW = panel.clientWidth
+          - parseFloat(ps.paddingLeft) - parseFloat(ps.paddingRight);
+        if (innerW > 0) avail = Math.min(avail, innerW);
       }
       const size = Math.max(220, Math.floor(avail));
       canvas.width = size * dpr;
@@ -1876,6 +1901,173 @@
         .replace(/&/g, '&amp;').replace(/</g, '&lt;')
         .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
+
+    /* ================================================================
+       Rainbow + Sparkle button effect  (ported from on.design)
+    ================================================================ */
+    (function initRainbowBtn() {
+      const btn    = document.getElementById('spinBtn');
+      const rainbow = document.getElementById('spinBtnRainbow');
+      const canvas  = document.getElementById('spinBtnCanvas');
+      if (!btn || !rainbow || !canvas) return;
+
+      /* ── Rainbow gradient ── */
+      function applyRainbow(x, fade = 1) {
+        const pct   = x * 100;
+        const angle = 90 + (x - 0.5) * 80;
+        const f = fade;
+        rainbow.style.background = `linear-gradient(
+          ${angle}deg,
+          transparent                            ${Math.max(0, pct - 42)}%,
+          rgba(255,  50, 180, ${0.55 * f})       ${pct - 16}%,
+          rgba(140,  80, 255, ${0.65 * f})       ${pct -  5}%,
+          rgba( 40, 180, 255, ${0.70 * f})       ${pct     }%,
+          rgba( 60, 230, 180, ${0.60 * f})       ${pct +  5}%,
+          rgba(255, 200,  50, ${0.50 * f})       ${pct + 16}%,
+          transparent                            ${Math.min(100, pct + 42)}%
+        )`;
+      }
+      applyRainbow(0.5);
+
+      /* ── Sparkle particles ── */
+      const PARTICLE_COUNT = 60;
+      let W = 0, H = 0;
+      let particles = [];
+
+      function initParticles(w, h) {
+        W = w; H = h;
+        canvas.width  = w;
+        canvas.height = h;
+        particles = Array.from({ length: PARTICLE_COUNT }, () => ({
+          x:     Math.random() * w,
+          y:     Math.random() * h,
+          r:     0.6 + Math.random(),          // base radius 0.6–1.6 px
+          phase: Math.random() * Math.PI * 2,
+        }));
+      }
+
+      function drawSparkles(mx, my, fade = 1) {
+        const ctx = canvas.getContext('2d');
+        if (!ctx || !particles.length) return;
+        ctx.clearRect(0, 0, W, H);
+
+        const influence = Math.max(W, H) * 0.55;
+        const phaseAngle = (mx / W) * Math.PI * 6 + (my / H) * Math.PI * 4;
+
+        for (const p of particles) {
+          const dx = p.x - mx, dy = p.y - my;
+          const f  = Math.max(0, 1 - Math.sqrt(dx * dx + dy * dy) / influence);
+          const wave = 0.5 + 0.5 * Math.sin(phaseAngle + p.phase + 0.05 * p.x + 0.07 * p.y);
+          const minAlpha = 0.4 + 0.5 * f;
+          const alpha    = (0.15 + 0.85 * f) * (1 - minAlpha + minAlpha * wave) * fade;
+          const r        = f > 0.5 ? p.r * (1 + 0.6 * f) : p.r;
+
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+          ctx.fill();
+
+          // Cross star-spike for particles very close to cursor
+          if (f > 0.7) {
+            const burst = (f - 0.7) * 2.5 * wave;
+            ctx.strokeStyle = `rgba(255,255,255,${0.6 * burst * fade})`;
+            ctx.lineWidth   = 0.5;
+            const arm = 2.5 * r;
+            ctx.beginPath();
+            ctx.moveTo(p.x - arm, p.y); ctx.lineTo(p.x + arm, p.y);
+            ctx.moveTo(p.x, p.y - arm); ctx.lineTo(p.x, p.y + arm);
+            ctx.stroke();
+          }
+        }
+      }
+
+      /* ── Mouse position state ── */
+      let mouse = { x: 0.5, y: 0.5 };
+      let isHovering = false;
+      let rafId = null;
+      let idleRainbowEnabled = true;
+      let leaveTimeoutId = null;
+
+      /* ── Idle sweep animation (when not hovering) ── */
+      let idleStart = null;
+      const IDLE_PERIOD = 2400;
+
+      function idleAnimate(now) {
+        if (isHovering) return;
+        if (!idleStart) idleStart = now;
+        const t = ((now - idleStart) % IDLE_PERIOD) / IDLE_PERIOD;
+        const s = t * t * (3 - 2 * t); // smoothstep 0→1
+
+        // Fade envelope: ease in over first 12%, ease out over last 12%
+        const FADE_ZONE = 0.12;
+        const fade = Math.min(1, Math.min(s / FADE_ZONE, (1 - s) / FADE_ZONE));
+
+        // Extend cursor slightly beyond button edges for natural sparkle entry/exit
+        const OVERSHOOT = 0.15;
+        const mx = (s * (1 + 2 * OVERSHOOT) - OVERSHOOT) * W;
+        const my = (0.5 + 0.15 * Math.sin(t * Math.PI * 2)) * H;
+
+        drawSparkles(mx, my, fade);
+        if (idleRainbowEnabled) applyRainbow(s, fade);
+        rafId = requestAnimationFrame(idleAnimate);
+      }
+
+      function startIdle() {
+        idleStart = null;
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(idleAnimate);
+      }
+
+      /* ── Setup on first render ── */
+      function setup() {
+        const rect = btn.getBoundingClientRect();
+        initParticles(rect.width || 280, rect.height || 56);
+        startIdle();
+      }
+
+      // Delay until layout is ready
+      requestAnimationFrame(() => requestAnimationFrame(setup));
+
+      /* ── Mouse interaction ── */
+      btn.addEventListener('mouseenter', () => {
+        isHovering = true;
+        idleRainbowEnabled = false;
+        if (leaveTimeoutId) { clearTimeout(leaveTimeoutId); leaveTimeoutId = null; }
+        if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+      });
+
+      btn.addEventListener('mousemove', (e) => {
+        const rect = btn.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width;
+        mouse = {
+          x: Math.max(0, Math.min(1, x)),
+          y: Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height)),
+        };
+        applyRainbow(mouse.x);
+        drawSparkles(mouse.x * W, mouse.y * H);
+      });
+
+      btn.addEventListener('mouseleave', () => {
+        isHovering = false;
+        idleRainbowEnabled = false;
+        startIdle();
+
+        // After CSS opacity transition settles, hand control to idle sweep
+        leaveTimeoutId = setTimeout(() => {
+          if (!isHovering) {
+            idleStart = null; // restart sweep from left edge
+            idleRainbowEnabled = true;
+          }
+          leaveTimeoutId = null;
+        }, 500); // matches .spin-btn__rainbow transition duration
+      });
+
+      // Re-init if window resizes
+      window.addEventListener('resize', () => {
+        const rect = btn.getBoundingClientRect();
+        if (rect.width > 0) initParticles(rect.width, rect.height);
+      }, { passive: true });
+    })();
   </script>
 </body>
 
