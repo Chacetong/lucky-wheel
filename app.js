@@ -190,7 +190,29 @@
 
       window.addEventListener('resize', () => { resizeCanvas(); redraw(); });
       document.fonts.ready.then(() => redraw());
+
+      startSpinBtnAttentionLoop();
     });
+
+    /* Replay the CTA arrow slide every 5s so idle users notice the button.
+       The return slide is suppressed so only the outward motion plays; the
+       twin --next arrow lands at center in the same frame the --current one
+       teleports back, making the reset visually seamless. */
+    function startSpinBtnAttentionLoop() {
+      const btn = document.getElementById('spinBtn');
+      if (!btn) return;
+      setInterval(() => {
+        if (btn.disabled || prefersReducedMotion()) return;
+        btn.classList.add('attention');
+        setTimeout(() => {
+          btn.classList.add('attention-reset');
+          btn.classList.remove('attention');
+          requestAnimationFrame(() => {
+            btn.classList.remove('attention-reset');
+          });
+        }, 320);
+      }, 5000);
+    }
 
     /* ================================================================
        Canvas helpers

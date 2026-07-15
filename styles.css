@@ -252,6 +252,20 @@ input {
   transform: translateX(0);
 }
 
+/* Idle attention: periodic replay of the hover slide to hint at the CTA. */
+.spin-btn.attention:not(:disabled) .spin-btn__arrow--current {
+  transform: translateX(120%);
+}
+
+.spin-btn.attention:not(:disabled) .spin-btn__arrow--next {
+  transform: translateX(0);
+}
+
+/* Reset arrows to base without playing the return slide. */
+.spin-btn.attention-reset .spin-btn__arrow {
+  transition: none;
+}
+
 .mode-row {
   min-width: 158px;
   padding: 0 18px;
