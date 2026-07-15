@@ -4,11 +4,11 @@
     const MAX_ENTRIES = 1000;
 
     const PALETTE = [
-      '#FF6B6B', '#22D3EE', '#FFD166', '#A78BFA',
-      '#34D399', '#F472B6', '#60A5FA', '#FB923C',
-      '#C084FC', '#A3E635', '#FF8A80', '#4FC3F7',
-      '#FBBF24', '#E879F9', '#2DD4BF', '#FF7043',
-      '#7986CB', '#FCD34D', '#EC4899', '#6EE7B7',
+      '#F06A6A', '#6AF078', '#856AF0', '#F0936A',
+      '#6AF0A0', '#AD6AF0', '#F0BB6A', '#6AF0C8',
+      '#D66AF0', '#F0E36A', '#6AF0F0', '#F06AE3',
+      '#D6F06A', '#6AC8F0', '#F06ABB', '#ADF06A',
+      '#6AA0F0', '#F06A93', '#85F06A', '#6A78F0',
     ];
 
     const ACDC_ROSTER = [
@@ -52,6 +52,19 @@
           entry.color = getNextDistinctColor(entry.color, [previousColor]);
         }
       });
+
+      /* The wheel is circular, so the final and first segments also touch. */
+      if (entries.length > 1) {
+        const firstColor = entries[0].color;
+        const lastIndex = entries.length - 1;
+        const lastEntry = entries[lastIndex];
+        if (lastEntry.color === firstColor) {
+          lastEntry.color = getNextDistinctColor(lastEntry.color, [
+            entries[lastIndex - 1].color,
+            firstColor,
+          ]);
+        }
+      }
     }
 
     /* ================================================================
@@ -393,7 +406,8 @@
       const id = nextId++;
       const title = defaultTitle || `Player ${id}`;
       const lastColor = entries.length > 0 ? entries[entries.length - 1].color : null;
-      const color = getNextDistinctColor(lastColor, [lastColor]);
+      const firstColor = entries.length > 0 ? entries[0].color : null;
+      const color = getNextDistinctColor(lastColor, [lastColor, firstColor]);
       entries.push({ id, title, weight: 1, color });
       renderList();
       redraw();
@@ -442,8 +456,12 @@
       const entryIndex = entries.findIndex(entry => entry.id === id);
       if (entryIndex < 0) return;
       const e = entries[entryIndex];
-      const previousColor = entries[entryIndex - 1]?.color;
-      const nextColor = entries[entryIndex + 1]?.color;
+      const previousColor = entries.length > 1
+        ? entries[(entryIndex - 1 + entries.length) % entries.length].color
+        : null;
+      const nextColor = entries.length > 1
+        ? entries[(entryIndex + 1) % entries.length].color
+        : null;
       e.color = getNextDistinctColor(e.color, [previousColor, nextColor]);
       /* Update only the affected dot to preserve focus & avoid DOM churn */
       const dot = document.querySelector(`.entry-row[data-id="${id}"] .entry-dot`);
