@@ -650,31 +650,29 @@
       const duration = reduceMotion
         ? 700
         : 4500 + Math.random() * 1200;
-      setTimeout(() => {
-        const t0 = performance.now();
+      const t0 = performance.now();
 
-        function tick(now) {
-          const t = Math.min((now - t0) / duration, 1);
-          const r = from + fullSpins * easeSpin(t);
-          drawWheel(r);
+      function tick(now) {
+        const t = Math.min((now - t0) / duration, 1);
+        const r = from + fullSpins * easeSpin(t);
+        drawWheel(r);
 
-          if (t < 1) {
-            rafId = requestAnimationFrame(tick);
-          } else {
-            rotation = to;
-            drawWheel(rotation);
+        if (t < 1) {
+          rafId = requestAnimationFrame(tick);
+        } else {
+          rotation = to;
+          drawWheel(rotation);
 
-            spinning = false;
-            document.body.classList.remove('spinning');
-            syncUI();
+          spinning = false;
+          document.body.classList.remove('spinning');
+          syncUI();
 
-            /* Determine winner from final pointer position */
-            showResult(getWinnerAtPointer(rotation));
-          }
+          /* Determine winner from final pointer position */
+          showResult(getWinnerAtPointer(rotation));
         }
+      }
 
-        rafId = requestAnimationFrame(tick);
-      }, 0);
+      rafId = requestAnimationFrame(tick);
     }
 
     /* Determine which segment the pointer (12-o-clock) lands on */
@@ -743,7 +741,7 @@
         <time class="modal__time" datetime="${resultDate.toISOString()}">${resultTime.date} <strong>${resultTime.time}</strong></time>
       </div>
       <div class="modal__actions">
-        <button class="btn btn--primary" onclick="spinAgain()">
+        <button type="button" class="btn btn--primary" data-action="spin-again">
           <span>再来一次</span>
           <span class="spin-btn__arrow-stage" aria-hidden="true">
             <svg class="spin-btn__arrow spin-btn__arrow--current" width="96" height="48" viewBox="0 0 96 48" fill="none" xmlns="http://www.w3.org/2000/svg" focusable="false">
@@ -754,7 +752,7 @@
             </svg>
           </span>
         </button>
-        <button class="btn btn--ghost"   onclick="closeModal()">关闭</button>
+        <button type="button" class="btn btn--ghost" data-action="close">关闭</button>
       </div>
     </div>`;
 
@@ -793,7 +791,15 @@
       document.addEventListener('keydown', onKey);
       overlay._cleanup = () => document.removeEventListener('keydown', onKey);
 
-      overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+      overlay.addEventListener('click', (event) => {
+        const trigger = event.target.closest('[data-action]');
+        if (trigger) {
+          if (trigger.dataset.action === 'spin-again') spinAgain();
+          else if (trigger.dataset.action === 'close') closeModal();
+          return;
+        }
+        if (event.target === overlay) closeModal();
+      });
 
       /* Defer removal until modal is closed */
       pendingRemoveId = removeMode ? winner.id : null;
