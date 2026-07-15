@@ -92,6 +92,10 @@
     const prefersReducedMotion = () =>
       matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    function totalWeight() {
+      return entries.reduce((sum, e) => sum + (e.weight || 1), 0);
+    }
+
     /* ================================================================
        Persistence (localStorage)
     ================================================================ */
@@ -256,10 +260,10 @@
       }
 
       /* ── segments ────────────────────────────── */
-      const total = entries.reduce((s, e) => s + (e.weight || 1), 0);
+      const total = totalWeight();
       let angle = rot - Math.PI / 2;   // 0° at 12-o-clock
 
-      entries.forEach((entry, i) => {
+      entries.forEach((entry) => {
         const slice = (entry.weight / total) * Math.PI * 2;
         const end = angle + slice;
         const color = entry.color;
@@ -566,7 +570,7 @@
     }
 
     function syncStats() {
-      const total = entries.reduce((s, e) => s + (e.weight || 1), 0);
+      const total = totalWeight();
       document.getElementById('statCount').textContent = entries.length;
       document.getElementById('statWeight').textContent = Number.isInteger(total) ? total : total.toFixed(1);
     }
@@ -632,8 +636,7 @@
             syncUI();
 
             /* Determine winner from final pointer position */
-            const { winner, winIdx } = getWinnerAtPointer(rotation);
-            showResult(winner, winIdx);
+            showResult(getWinnerAtPointer(rotation));
           }
         }
 
@@ -643,17 +646,17 @@
 
     /* Determine which segment the pointer (12-o-clock) lands on */
     function getWinnerAtPointer(rot) {
-      const total = entries.reduce((s, e) => s + (e.weight || 1), 0);
+      const total = totalWeight();
       /* Pointer is at 12-o-clock; wheel is rotated by rot from its initial position.
          In drawWheel, angle starts at rot - PI/2, so the pointer points at
          the angle = -rot (mod 2PI) within the unrotated segment layout. */
-      let pointerAngle = ((-rot % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+      const pointerAngle = ((-rot % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
       let cum = 0;
       for (let i = 0; i < entries.length; i++) {
         cum += (entries[i].weight || 1) / total * Math.PI * 2;
-        if (pointerAngle < cum) return { winner: entries[i], winIdx: i };
+        if (pointerAngle < cum) return entries[i];
       }
-      return { winner: entries[entries.length - 1], winIdx: entries.length - 1 };
+      return entries[entries.length - 1];
     }
 
     function easeSpin(t) {
@@ -681,12 +684,12 @@
     /* ================================================================
        Result modal
     ================================================================ */
-    function showResult(winner, winIdx) {
+    function showResult(winner) {
       closeModal();
 
       const removeMode = document.getElementById('removeToggle').checked;
       const color = winner.color;
-      const pct = ((winner.weight / entries.reduce((s, e) => s + (e.weight || 1), 0)) * 100).toFixed(1);
+      const pct = ((winner.weight / totalWeight()) * 100).toFixed(1);
       const resultDate = new Date();
       const resultTime = formatResultTime(resultDate);
 
