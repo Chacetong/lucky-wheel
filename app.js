@@ -527,8 +527,7 @@
              maxlength="30"
              aria-label="参与者名称"
              oninput="updateTitle(${entry.id}, this.value)" />
-      <div class="weight-sep" aria-hidden="true"></div>
-      <span class="weight-label" id="wl-${entry.id}" aria-label="权重"></span>
+      <span class="weight-label" aria-label="权重"></span>
       <input class="weight-input"
              type="number"
              inputmode="decimal"
@@ -814,8 +813,6 @@
     /* ================================================================
        Utility
     ================================================================ */
-    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
-
     function formatResultTime(date) {
       const pad = value => String(value).padStart(2, '0');
       return {

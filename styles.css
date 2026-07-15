@@ -500,10 +500,6 @@ input {
   -webkit-appearance: none;
 }
 
-.weight-sep {
-  display: none;
-}
-
 .del-btn {
   width: 38px;
   height: 38px;
@@ -976,11 +972,6 @@ body.spinning .wheel-wrap {
 @keyframes toastIn {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: none; }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
 
 @keyframes fadeOut {
