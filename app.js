@@ -195,9 +195,9 @@
     });
 
     /* Replay the CTA arrow slide every 5s so idle users notice the button.
-       The return slide is suppressed so only the outward motion plays; the
-       twin --next arrow lands at center in the same frame the --current one
-       teleports back, making the reset visually seamless. */
+       Only the outward motion is visible: after the slide, we suppress the
+       return transition by forcing a synchronous style commit with
+       .attention-reset before restoring the normal transition rules. */
     function startSpinBtnAttentionLoop() {
       const btn = document.getElementById('spinBtn');
       if (!btn) return;
@@ -207,9 +207,11 @@
         setTimeout(() => {
           btn.classList.add('attention-reset');
           btn.classList.remove('attention');
-          requestAnimationFrame(() => {
-            btn.classList.remove('attention-reset');
-          });
+          /* Force sync layout so the transition:none + reset transforms are
+             committed in this task; removing .attention-reset next won't
+             retrigger a transition because the values are already at rest. */
+          void btn.offsetWidth;
+          btn.classList.remove('attention-reset');
         }, 320);
       }, 5000);
     }
