@@ -552,7 +552,7 @@
       const notice = document.getElementById('notice');
       const enough = entries.length >= 2;
       btn.disabled = spinning;
-      btn.querySelector('.spin-btn__text').textContent = spinning ? '正在决定…' : '立即开转';
+      btn.querySelector('.spin-btn__text').textContent = spinning ? '等待命运…' : '见证奇迹';
       document.getElementById('removeToggle').disabled = spinning;
       notice.classList.toggle('hidden', enough);
       updateLock();
