@@ -681,6 +681,8 @@
       const removeMode = document.getElementById('removeToggle').checked;
       const color = winner.color;
       const pct = ((winner.weight / entries.reduce((s, e) => s + (e.weight || 1), 0)) * 100).toFixed(1);
+      const resultDate = new Date();
+      const resultTime = formatResultTime(resultDate);
 
       const overlay = document.createElement('div');
       overlay.className = 'overlay';
@@ -694,7 +696,10 @@
       <div class="modal__trophy" aria-hidden="true">01</div>
       <div class="modal__label" aria-hidden="true">THE<br>WINNER<br>IS</div>
       <div class="modal__winner" id="modalWinner">${esc(winner.title)}</div>
-      <div class="modal__weight">胜出概率 / ${pct}%</div>
+      <div class="modal__details">
+        <div class="modal__weight">胜出概率 / ${pct}%</div>
+        <time class="modal__time" datetime="${resultDate.toISOString()}">${resultTime.date} <strong>${resultTime.time}</strong></time>
+      </div>
       <div class="modal__actions">
         <button class="btn btn--primary" onclick="spinAgain()">
           <span>再来一次</span>
@@ -803,6 +808,14 @@
        Utility
     ================================================================ */
     function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+    function formatResultTime(date) {
+      const pad = value => String(value).padStart(2, '0');
+      return {
+        date: `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())}`,
+        time: `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`,
+      };
+    }
 
     function initResultEffect(canvas, target) {
       if (!canvas) return () => { };
