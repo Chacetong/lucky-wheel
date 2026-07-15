@@ -592,6 +592,13 @@
           - (wheelRect.top + wheelRect.height / 2);
         wheel.style.setProperty('--spin-shift-x', `${shiftX.toFixed(1)}px`);
         wheel.style.setProperty('--spin-shift-y', `${shiftY.toFixed(1)}px`);
+
+        /* Fill the viewport with a safe margin on all sides. */
+        const viewportShort = Math.min(window.innerWidth, window.innerHeight);
+        const safeMargin = Math.max(24, viewportShort * 0.04);
+        const availableSize = viewportShort - safeMargin * 2;
+        const scale = Math.max(1, availableSize / wheelRect.width);
+        wheel.style.setProperty('--spin-scale', scale.toFixed(3));
       }
       document.body.classList.add('spinning');
       syncUI();

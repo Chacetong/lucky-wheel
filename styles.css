@@ -938,7 +938,7 @@ body.spinning .wheel-wrap {
   transform: translate(
       var(--spin-shift-x, 0px),
       calc(-51% + var(--spin-shift-y, 0px))
-    ) scale(1.2);
+    ) scale(var(--spin-scale, 1.2));
 }
 
 @keyframes titleIn {
