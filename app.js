@@ -79,6 +79,14 @@
     let redrawRafId = null;
     let saveTimerId = null;
 
+    /* Cancel-spin bookkeeping. preSpinRotation captures the resting angle
+       right before a spin starts, so Escape can snap the wheel back cleanly.
+       restoreWinnerOnCancel is the modal winner to reopen when the current
+       spin was triggered from the result modal's "再来一次" button. */
+    let preSpinRotation = 0;
+    let restoreWinnerOnCancel = null;
+    let currentModalWinner = null;
+
     /* Cached CSS variables — avoid getComputedStyle in render hot path */
     const CSS_VARS = {};
     function readCssVars() {
@@ -178,8 +186,15 @@
       const toggle = document.getElementById('removeToggle');
       if (toggle) toggle.addEventListener('change', saveState);
 
-      /* Keyboard shortcut: Space / Enter triggers spin (when not typing) */
+      /* Global keyboard shortcuts:
+         - Escape cancels an active spin and restores the pre-spin state
+         - Space / Enter triggers a spin (when not typing / not busy) */
       document.addEventListener('keydown', (e) => {
+        if (spinning && e.key === 'Escape') {
+          e.preventDefault();
+          cancelSpin();
+          return;
+        }
         if (modalOpen || spinning) return;
         if (e.code !== 'Space' && e.code !== 'Enter') return;
         const tag = (e.target && e.target.tagName) || '';
@@ -635,7 +650,7 @@
     /* ================================================================
        Spin
     ================================================================ */
-    function handleSpin() {
+    function handleSpin(restoreWinner = null) {
       if (entries.length < 2) {
         showToast('⚠️ 至少需要 2 位参与者才能开始抽奖');
         return;
@@ -643,6 +658,8 @@
       if (spinning) return;
 
       spinning = true;
+      preSpinRotation = rotation;
+      restoreWinnerOnCancel = restoreWinner;
       const wheel = document.querySelector('.wheel-wrap');
       if (wheel) {
         const wheelRect = wheel.getBoundingClientRect();
@@ -699,6 +716,26 @@
       rafId = requestAnimationFrame(tick);
     }
 
+    /* Abort the current spin animation and restore the pre-spin state. If the
+       spin was triggered from a result modal (spinAgain), reopen that modal
+       with the previous winner; otherwise fall back to the idle home state. */
+    function cancelSpin() {
+      if (!spinning) return;
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      rotation = preSpinRotation;
+      drawWheel(rotation);
+      spinning = false;
+      document.body.classList.remove('spinning');
+      syncUI();
+
+      const restore = restoreWinnerOnCancel;
+      restoreWinnerOnCancel = null;
+      if (restore) showResult(restore);
+    }
+
     /* Determine which segment the pointer (12-o-clock) lands on */
     function getWinnerAtPointer(rot) {
       const total = totalWeight();
@@ -741,6 +778,7 @@
     ================================================================ */
     function showResult(winner) {
       closeModal();
+      currentModalWinner = winner;
 
       const removeMode = document.getElementById('removeToggle').checked;
       const color = winner.color;
@@ -840,6 +878,7 @@
       updateLock();
       el.classList.add('out');
       setTimeout(() => {
+        currentModalWinner = null;
         el.remove();
         if (pendingRemoveId !== null) {
           entries = entries.filter(e => e.id !== pendingRemoveId);
@@ -855,8 +894,9 @@
     }
 
     function spinAgain() {
+      const restoreWinner = currentModalWinner;
       closeModal(() => {
-        if (entries.length >= 2) handleSpin();
+        if (entries.length >= 2) handleSpin(restoreWinner);
         else showToast('⚠️ 参与者不足，无法继续抽奖');
       });
     }

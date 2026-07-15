@@ -346,6 +346,12 @@ input {
   letter-spacing: 0.08em;
 }
 
+.shortcut-hint--cancel {
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+}
+
 /* Roster */
 .roster {
   position: relative;
@@ -927,10 +933,15 @@ body.spinning .hero-copy {
 }
 
 body.spinning .mode-row,
-body.spinning .shortcut-hint {
+body.spinning .shortcut-hint:not(.shortcut-hint--cancel) {
   opacity: 0;
   transform: translateY(12px);
   pointer-events: none;
+}
+
+body.spinning .shortcut-hint--cancel {
+  opacity: 1;
+  transform: none;
 }
 
 body.spinning .spin-btn {
@@ -1039,6 +1050,11 @@ body.spinning .wheel-wrap {
     border-left: 0;
     border-top: 1px solid var(--line-soft);
   }
+
+  /* Keyboard-only hints have no place on touch layouts. */
+  .shortcut-hint {
+    display: none;
+  }
 }
 
 @media (max-width: 600px) {
@@ -1097,10 +1113,6 @@ body.spinning .wheel-wrap {
     min-height: 44px;
     justify-content: flex-start;
     border-width: 1px;
-  }
-
-  .shortcut-hint {
-    bottom: 18px;
   }
 
   .roster {
