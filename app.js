@@ -160,6 +160,9 @@
       readCssVars();
       resizeCanvas();
 
+      const entriesList = document.getElementById('entriesList');
+      if (entriesList) bindEntriesListDelegation(entriesList);
+
       const restored = loadState();
       if (restored) {
         renderList();
@@ -523,26 +526,56 @@
 
         row.innerHTML = `
       <span class="entry-index" aria-hidden="true">${String(index + 1).padStart(2, '0')}</span>
-      <span class="entry-dot" style="background:${entry.color}" onclick="cycleColor(${entry.id})" role="button" tabindex="0" title="切换颜色" aria-label="切换颜色" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();cycleColor(${entry.id})}"></span>
+      <button type="button" class="entry-dot" data-action="cycle-color" style="background:${entry.color}" title="切换颜色" aria-label="切换颜色"></button>
       <input class="entry-input"
              type="text"
              value="${esc(entry.title)}"
              placeholder="名称"
              maxlength="30"
-             aria-label="参与者名称"
-             oninput="updateTitle(${entry.id}, this.value)" />
+             aria-label="参与者名称" />
       <span class="weight-label" aria-label="权重"></span>
       <input class="weight-input"
              type="number"
              inputmode="decimal"
              value="${entry.weight}"
              min="0.1" max="99999" step="0.1"
-             aria-label="${esc(entry.title)} 的权重"
-             oninput="updateWeight(${entry.id}, this.value)"
-             onblur="commitWeight(${entry.id}, this)" />
-      <button class="del-btn" onclick="deleteEntry(${entry.id})" title="移除" aria-label="移除 ${esc(entry.title)}">✕</button>
+             aria-label="${esc(entry.title)} 的权重" />
+      <button type="button" class="del-btn" data-action="delete" title="移除" aria-label="移除 ${esc(entry.title)}">✕</button>
     `;
         list.appendChild(row);
+      });
+    }
+
+    /* Delegated handlers for the entries list. Attached once at boot so
+       dynamically rendered rows do not need per-row event wiring. */
+    function bindEntriesListDelegation(list) {
+      const rowId = (target) => {
+        const row = target.closest('.entry-row');
+        return row ? Number(row.dataset.id) : null;
+      };
+
+      list.addEventListener('click', (event) => {
+        const trigger = event.target.closest('[data-action]');
+        if (!trigger) return;
+        const id = rowId(trigger);
+        if (id === null) return;
+        if (trigger.dataset.action === 'cycle-color') cycleColor(id);
+        else if (trigger.dataset.action === 'delete') deleteEntry(id);
+      });
+
+      list.addEventListener('input', (event) => {
+        const target = event.target;
+        const id = rowId(target);
+        if (id === null) return;
+        if (target.classList.contains('entry-input')) updateTitle(id, target.value);
+        else if (target.classList.contains('weight-input')) updateWeight(id, target.value);
+      });
+
+      list.addEventListener('focusout', (event) => {
+        const target = event.target;
+        const id = rowId(target);
+        if (id === null) return;
+        if (target.classList.contains('weight-input')) commitWeight(id, target);
       });
     }
 

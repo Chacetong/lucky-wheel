@@ -434,6 +434,7 @@ input {
 .entry-dot {
   width: 10px;
   height: 22px;
+  padding: 0;
   cursor: pointer;
   border-radius: 0;
   transition: width 180ms var(--ease-out);
