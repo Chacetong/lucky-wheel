@@ -90,6 +90,7 @@ input {
   min-height: 0;
   overflow: hidden;
   isolation: isolate;
+  container-type: inline-size;
 }
 
 .hero-copy {
@@ -97,7 +98,7 @@ input {
   z-index: -2;
   inset: 3% auto auto -0.035em;
   color: var(--deep-gray);
-  font: italic 900 clamp(8rem, 17vw, 16rem) / 0.68 var(--font-display);
+  font: italic 900 clamp(8rem, 23cqw, 16rem) / 0.68 var(--font-display);
   letter-spacing: -0.055em;
   pointer-events: none;
   user-select: none;
@@ -125,18 +126,19 @@ input {
 }
 
 .hero-title p {
-  margin-bottom: 12px;
+  margin-bottom: 4px;
   color: var(--green);
   font-size: 0.85rem;
   font-weight: 800;
+  text-transform: uppercase;
 }
 
 .hero-title h1 {
   color: var(--white);
-  font-size: clamp(4.25rem, 7.3vw, 7rem);
+  font-size: clamp(4.25rem, 10cqw, 7rem);
   font-weight: 900;
   letter-spacing: -0.04em;
-  line-height: 0.88;
+  line-height: 0.96;
   text-wrap: balance;
 }
 
@@ -144,8 +146,8 @@ input {
   position: absolute;
   z-index: 2;
   top: 48%;
-  right: clamp(18px, 2vw, 34px);
-  width: min(67.1%, 704px);
+  right: clamp(18px, 2.8cqw, 34px);
+  width: clamp(460px, 75cqw, 704px);
   aspect-ratio: 1;
   transform: translateY(-51%);
   display: grid;
