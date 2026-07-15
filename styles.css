@@ -168,7 +168,7 @@ input {
   position: absolute;
   z-index: 4;
   left: 0;
-  right: clamp(18px, 2.4vw, 34px);
+  right: clamp(18px, 2.4cqw, 34px);
   bottom: clamp(38px, 5vh, 58px);
   display: flex;
   align-items: stretch;
@@ -187,7 +187,7 @@ input {
   position: relative;
   flex: 1;
   min-height: 66px;
-  padding: 12px clamp(20px, 3vw, 40px);
+  padding: 12px clamp(20px, 3cqw, 40px);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -196,7 +196,7 @@ input {
   background: var(--white);
   color: var(--black);
   border-radius: 0;
-  font-size: clamp(1.15rem, 1.6vw, 1.45rem);
+  font-size: clamp(1.15rem, 1.6cqw, 1.45rem);
   font-weight: 900;
   line-height: 1;
   isolation: isolate;
@@ -1001,7 +1001,7 @@ body.spinning .wheel-wrap {
   }
 
   .hero-copy {
-    font-size: clamp(8rem, 26vw, 13rem);
+    font-size: clamp(8rem, 26cqw, 13rem);
   }
 
   .hero-title {
@@ -1009,7 +1009,7 @@ body.spinning .wheel-wrap {
   }
 
   .hero-title h1 {
-    font-size: clamp(4rem, 11vw, 6rem);
+    font-size: clamp(4rem, 11cqw, 6rem);
   }
 
   .wheel-wrap {
@@ -1040,7 +1040,7 @@ body.spinning .wheel-wrap {
   .hero-copy {
     top: 6%;
     left: -0.04em;
-    font-size: clamp(7.5rem, 38vw, 10rem);
+    font-size: clamp(7.5rem, 38cqw, 10rem);
     line-height: 0.7;
   }
 
@@ -1055,7 +1055,7 @@ body.spinning .wheel-wrap {
   }
 
   .hero-title h1 {
-    font-size: clamp(3.5rem, 16vw, 4.6rem);
+    font-size: clamp(3.5rem, 16cqw, 4.6rem);
   }
 
   .wheel-wrap {
