@@ -36,6 +36,8 @@
           <canvas id="wheelCanvas" role="img" aria-label="按参与者权重划分的抽奖转盘"></canvas>
         </div>
 
+        <div class="group-stage" id="groupStage" aria-hidden="true"></div>
+
         <div class="draw-controls">
           <button class="spin-btn" id="spinBtn" onclick="handleSpin()">
             <span class="spin-btn__text">见证奇迹</span>
@@ -60,6 +62,34 @@
             </span>
             <span class="mode-row__text">胜出后移除</span>
           </label>
+        </div>
+
+        <div class="group-controls">
+          <button class="spin-btn" id="groupBtn" type="button">
+            <span class="spin-btn__text">开始分组</span>
+            <span class="spin-btn__arrow-stage" aria-hidden="true">
+              <svg class="spin-btn__arrow spin-btn__arrow--current" width="96" height="48" viewBox="0 0 96 48"
+                fill="none" xmlns="http://www.w3.org/2000/svg" focusable="false">
+                <path d="M0 24H96M96 24C82.7452 24 72 13.2548 72 0M96 24C82.7452 24 72 34.7452 72 48"
+                  stroke="currentColor" stroke-width="8" />
+              </svg>
+              <svg class="spin-btn__arrow spin-btn__arrow--next" width="96" height="48" viewBox="0 0 96 48"
+                fill="none" xmlns="http://www.w3.org/2000/svg" focusable="false">
+                <path d="M0 24H96M96 24C82.7452 24 72 13.2548 72 0M96 24C82.7452 24 72 34.7452 72 48"
+                  stroke="currentColor" stroke-width="8" />
+              </svg>
+            </span>
+          </button>
+
+          <label class="group-count-input" title="组数">
+            <span>组数</span>
+            <input type="number" id="groupCount" value="2" min="2" step="1" inputmode="numeric" />
+          </label>
+
+          <div class="group-dist" role="radiogroup" aria-label="分配模式">
+            <button type="button" class="group-dist__btn is-active" data-dist="even" aria-pressed="true">均匀</button>
+            <button type="button" class="group-dist__btn" data-dist="fill" aria-pressed="false">相同</button>
+          </div>
         </div>
 
         <p class="shortcut-hint">按 SPACE / ENTER 也可开始</p>

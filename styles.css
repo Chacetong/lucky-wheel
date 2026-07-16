@@ -188,6 +188,45 @@ input {
   max-width: 100%;
 }
 
+/* Grouping preview stage: occupies the same box as .wheel-wrap. */
+.group-stage {
+  position: absolute;
+  z-index: 2;
+  top: 48%;
+  right: clamp(18px, 2.8cqw, 34px);
+  width: clamp(460px, 75cqw, 704px);
+  aspect-ratio: 1;
+  transform: translateY(-51%);
+  display: none;
+  gap: clamp(10px, 1.4cqw, 18px);
+  grid-template-columns: repeat(var(--group-cols, 2), 1fr);
+  grid-template-rows: repeat(var(--group-rows, 1), 1fr);
+  animation: wheelIn 0.85s 0.08s var(--ease-out) both;
+}
+
+.group-slot {
+  position: relative;
+  min-height: 0;
+  padding: clamp(12px, 1.5cqw, 20px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+  border: 2px solid var(--white);
+}
+
+.group-slot__header {
+  color: var(--white);
+  font: 900 clamp(1.1rem, 2.2cqw, 1.8rem)/1 var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+.group-slot__count {
+  color: var(--gray);
+  font: 700 0.72rem/1 var(--font-display);
+  letter-spacing: 0.08em;
+}
+
 .draw-controls {
   position: absolute;
   z-index: 4;
@@ -307,6 +346,96 @@ input {
   font-size: 0.76rem;
   font-weight: 700;
   white-space: nowrap;
+}
+
+/* Grouping controls: sits in the same slot as .draw-controls, visible only
+   when body.mode-grouping is active. */
+.group-controls {
+  position: absolute;
+  z-index: 4;
+  left: 0;
+  right: clamp(18px, 2.4cqw, 34px);
+  bottom: clamp(38px, 5vh, 58px);
+  display: none;
+  align-items: stretch;
+  gap: 14px;
+}
+
+body.mode-grouping .group-controls {
+  display: flex;
+}
+
+body.mode-grouping .group-stage {
+  display: grid;
+}
+
+.group-count-input {
+  min-width: 150px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: text;
+  border: 2px solid var(--line);
+  background: var(--black);
+}
+
+.group-count-input > span {
+  color: var(--gray);
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.group-count-input input {
+  width: 56px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--white);
+  font: 900 1.25rem/1 var(--font-display);
+  text-align: center;
+  outline: 0;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.group-count-input input::-webkit-inner-spin-button,
+.group-count-input input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.group-count-input:focus-within {
+  border-color: var(--green);
+}
+
+.group-dist {
+  display: flex;
+  border: 2px solid var(--line);
+  background: var(--black);
+}
+
+.group-dist__btn {
+  min-width: 76px;
+  padding: 0 18px;
+  background: transparent;
+  color: var(--gray);
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: color 160ms var(--ease-out), background 160ms var(--ease-out);
+}
+
+.group-dist__btn.is-active {
+  color: var(--black);
+  background: var(--green);
+}
+
+.group-dist__btn:not(:last-child) {
+  border-right: 1px solid var(--line);
 }
 
 .toggle {

@@ -73,6 +73,8 @@
     let entries = [];        // { id, title, weight, color }
     let nextId = 1;
     let currentMode = 'lottery'; // 'lottery' | 'grouping'
+    let groupCount = 2;
+    let distMode = 'even';   // 'even' | 'fill'
     let spinning = false;
     let modalOpen = false;
     let rotation = 0;         // current canvas rotation (radians)
@@ -139,7 +141,124 @@
       if (mode === 'lottery') {
         resizeCanvas();
         redraw();
+      } else {
+        syncGroupStage();
       }
+      saveState();
+    }
+
+    /* ================================================================
+       Grouping preview
+    ================================================================ */
+    const GROUP_MAX = 20;
+
+    /* Layout table tuned to keep small counts feeling intentional; falls back
+       to a near-square grid for larger counts. */
+    const GROUP_GRID_LAYOUTS = {
+      1: [1, 1], 2: [2, 1], 3: [3, 1], 4: [2, 2],
+      5: [3, 2], 6: [3, 2], 7: [4, 2], 8: [4, 2],
+      9: [3, 3], 10: [5, 2], 11: [4, 3], 12: [4, 3],
+    };
+
+    function groupGridLayout(n) {
+      if (GROUP_GRID_LAYOUTS[n]) return GROUP_GRID_LAYOUTS[n];
+      const cols = Math.ceil(Math.sqrt(n));
+      const rows = Math.ceil(n / cols);
+      return [cols, rows];
+    }
+
+    function groupCapForEntries() {
+      return Math.max(2, Math.min(entries.length || 2, GROUP_MAX));
+    }
+
+    function renderGroupStage() {
+      const stage = document.getElementById('groupStage');
+      if (!stage) return;
+      const n = Math.max(2, Math.min(groupCount, GROUP_MAX));
+      const [cols, rows] = groupGridLayout(n);
+      stage.style.setProperty('--group-cols', cols);
+      stage.style.setProperty('--group-rows', rows);
+      stage.innerHTML = '';
+      for (let i = 0; i < n; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'group-slot';
+        slot.dataset.index = i;
+        slot.innerHTML = `
+          <div class="group-slot__header">Group ${String(i + 1).padStart(2, '0')}</div>
+          <div class="group-slot__count">待分配</div>
+        `;
+        stage.appendChild(slot);
+      }
+    }
+
+    /* Reconcile group-count input constraints when the entry list changes
+       and re-render the preview. Safe to call in any mode. */
+    function syncGroupStage() {
+      const input = document.getElementById('groupCount');
+      const cap = groupCapForEntries();
+      if (groupCount > cap) groupCount = cap;
+      if (groupCount < 2) groupCount = 2;
+      if (input) {
+        input.max = String(cap);
+        input.value = String(groupCount);
+      }
+      renderGroupStage();
+    }
+
+    function updateGroupCount(raw) {
+      const parsed = parseInt(raw, 10);
+      if (!Number.isFinite(parsed)) return;
+      const cap = groupCapForEntries();
+      groupCount = Math.max(2, Math.min(parsed, cap));
+      renderGroupStage();
+      saveState();
+    }
+
+    function commitGroupCount(input) {
+      const cap = groupCapForEntries();
+      const raw = input.value.trim();
+      const parsed = parseInt(raw, 10);
+      let toast = null;
+
+      if (raw !== '' && Number.isFinite(parsed)) {
+        if (parsed < 2) {
+          toast = '组数不能少于 2';
+        } else if (parsed > cap) {
+          toast = entries.length < GROUP_MAX
+            ? `组数不能超过选手数（${entries.length}）`
+            : `最多支持 ${GROUP_MAX} 组`;
+        }
+      } else if (raw === '') {
+        toast = '请填写组数';
+      } else {
+        toast = '组数需为整数';
+      }
+
+      groupCount = Number.isFinite(parsed)
+        ? Math.max(2, Math.min(parsed, cap))
+        : 2;
+      input.value = String(groupCount);
+      renderGroupStage();
+      saveState();
+      if (toast) showToast(toast, { global: true });
+    }
+
+    function handleGroup() {
+      if (entries.length < 2) {
+        showToast('⚠️ 至少需要 2 位参与者才能分组', { global: true });
+        return;
+      }
+      /* Grouping animation & result modal land in S3. */
+    }
+
+    function setDistMode(mode) {
+      if (mode !== 'even' && mode !== 'fill') return;
+      distMode = mode;
+      document.querySelectorAll('.group-dist__btn').forEach(btn => {
+        const active = btn.dataset.dist === mode;
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-pressed', String(active));
+      });
       saveState();
     }
 
@@ -156,6 +275,8 @@
           nextId,
           removeMode: toggle ? toggle.checked : false,
           mode: currentMode,
+          groupCount,
+          distMode,
         }));
       } catch (_) { /* quota / privacy mode — ignore */ }
     }
@@ -196,6 +317,10 @@
         const toggle = document.getElementById('removeToggle');
         if (toggle && data.removeMode) toggle.checked = true;
         if (data.mode === 'grouping' || data.mode === 'lottery') currentMode = data.mode;
+        if (Number.isFinite(data.groupCount) && data.groupCount >= 2) {
+          groupCount = Math.floor(data.groupCount);
+        }
+        if (data.distMode === 'even' || data.distMode === 'fill') distMode = data.distMode;
         return true;
       } catch (_) {
         return false;
@@ -216,6 +341,17 @@
         tab.addEventListener('click', () => setMode(tab.dataset.mode));
       });
 
+      const groupCountInput = document.getElementById('groupCount');
+      if (groupCountInput) {
+        groupCountInput.addEventListener('input', () => updateGroupCount(groupCountInput.value));
+        groupCountInput.addEventListener('blur', () => commitGroupCount(groupCountInput));
+      }
+      document.querySelectorAll('.group-dist__btn').forEach(btn => {
+        btn.addEventListener('click', () => setDistMode(btn.dataset.dist));
+      });
+      const groupBtn = document.getElementById('groupBtn');
+      if (groupBtn) groupBtn.addEventListener('click', handleGroup);
+
       const restored = loadState();
       if (restored) {
         renderList();
@@ -227,6 +363,8 @@
         addEntry('Player 3');
       }
 
+      setDistMode(distMode);
+      syncGroupStage();
       setMode(currentMode);
 
       /* Persist remove-toggle changes */
@@ -506,6 +644,7 @@
       entries.push({ id, title, weight: 1, color });
       renderList();
       redraw();
+      syncGroupStage();
       syncUI();
       saveState();
     }
@@ -515,6 +654,7 @@
       ensureDistinctAdjacentColors();
       renderList();
       redraw();
+      syncGroupStage();
       syncUI();
       saveState();
     }
@@ -525,6 +665,7 @@
       nextId = 1;
       renderList();
       redraw();
+      syncGroupStage();
       syncUI();
       saveState();
     }
@@ -542,6 +683,7 @@
 
       renderList();
       redraw();
+      syncGroupStage();
       syncUI();
       saveState();
       showToast('已载入 ACDC 阵容');
@@ -672,11 +814,13 @@
     ================================================================ */
     function syncUI() {
       syncStats();
-      const btn = document.getElementById('spinBtn');
+      const spinBtn = document.getElementById('spinBtn');
       const notice = document.getElementById('notice');
       const enough = entries.length >= 2;
-      btn.disabled = spinning;
-      btn.querySelector('.spin-btn__text').textContent = spinning ? '等待命运…' : '见证奇迹';
+      if (spinBtn) {
+        spinBtn.disabled = spinning;
+        spinBtn.querySelector('.spin-btn__text').textContent = spinning ? '等待命运…' : '见证奇迹';
+      }
       document.getElementById('removeToggle').disabled = spinning;
       notice.classList.toggle('hidden', enough);
       updateLock();
