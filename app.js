@@ -434,12 +434,12 @@
           return;
         }
         if (modalOpen || spinning || grouping) return;
-        if (currentMode !== 'lottery') return;
         if (e.code !== 'Space' && e.code !== 'Enter') return;
         const tag = (e.target && e.target.tagName) || '';
         if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return;
         e.preventDefault();
-        handleSpin();
+        if (currentMode === 'lottery') handleSpin();
+        else if (currentMode === 'grouping') handleGroup();
       });
 
       window.addEventListener('resize', () => { resizeCanvas(); redraw(); });
@@ -868,11 +868,16 @@
     function syncUI() {
       syncStats();
       const spinBtn = document.getElementById('spinBtn');
+      const groupBtn = document.getElementById('groupBtn');
       const notice = document.getElementById('notice');
       const enough = entries.length >= 2;
       if (spinBtn) {
         spinBtn.disabled = spinning;
         spinBtn.querySelector('.spin-btn__text').textContent = spinning ? '等待命运…' : '见证奇迹';
+      }
+      if (groupBtn) {
+        groupBtn.disabled = grouping;
+        groupBtn.querySelector('.spin-btn__text').textContent = grouping ? '等待结果…' : '开始分组';
       }
       document.getElementById('removeToggle').disabled = spinning;
       notice.classList.toggle('hidden', enough);
