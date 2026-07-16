@@ -993,14 +993,7 @@
         <div class="modal group-modal" role="dialog" aria-modal="true" aria-labelledby="groupResultTitle">
           <div class="modal__label" id="groupResultTitle" aria-hidden="true">RANDOM<br>GROUPS<br>OK</div>
           <div class="group-result" style="--result-cols: ${cols}">
-            ${groups.map((members, i) => `
-              <div class="group-result__group" data-index="${i}">
-                <div class="group-result__header">Group ${String(i + 1).padStart(2, '0')}<span class="group-result__count">${members.length}</span></div>
-                <ul class="group-result__list">
-                  ${members.map(e => `<li class="group-result__member" style="--dot-color:${e.color}"><span class="group-result__dot" aria-hidden="true"></span>${esc(e.title)}</li>`).join('')}
-                </ul>
-              </div>
-            `).join('')}
+            ${groups.map((_, i) => renderGroupResultGroupMarkup(i)).join('')}
           </div>
           <div class="modal__actions">
             <button type="button" class="btn btn--primary" data-action="regroup">
@@ -1021,6 +1014,7 @@
       modalOpen = true;
       document.body.appendChild(overlay);
       updateLock();
+      bindGroupResultDragDrop(overlay);
 
       const primaryBtn = overlay.querySelector('.btn--primary');
       if (primaryBtn) primaryBtn.focus();
@@ -1046,6 +1040,101 @@
         }
         if (event.target === overlay) closeGroupResult();
       });
+    }
+
+    /* Small helpers for the group result markup + drag-and-drop. Split out
+       so the group card can be re-rendered in place after a drop without
+       rebuilding the whole overlay. */
+    function renderGroupResultGroupMarkup(groupIdx) {
+      const members = currentGroupResult[groupIdx] || [];
+      return `
+        <div class="group-result__group" data-index="${groupIdx}">
+          <div class="group-result__header">
+            Group ${String(groupIdx + 1).padStart(2, '0')}
+            <span class="group-result__count">${members.length}</span>
+          </div>
+          <ul class="group-result__list">
+            ${members.map(e => `
+              <li class="group-result__member" draggable="true" data-entry-id="${e.id}" style="--dot-color:${e.color}">
+                <span class="group-result__dot" aria-hidden="true"></span>${esc(e.title)}
+              </li>
+            `).join('')}
+          </ul>
+        </div>
+      `;
+    }
+
+    function refreshGroupResultGroup(overlay, groupIdx) {
+      const el = overlay.querySelector(`.group-result__group[data-index="${groupIdx}"]`);
+      if (!el) return;
+      el.outerHTML = renderGroupResultGroupMarkup(groupIdx);
+    }
+
+    /* Wire drag-and-drop for reassigning members between groups. Uses event
+       delegation on the overlay so re-rendered groups still work. */
+    function bindGroupResultDragDrop(overlay) {
+      let dragMemberId = null;
+      let dragSourceIdx = null;
+
+      overlay.addEventListener('dragstart', (event) => {
+        const member = event.target.closest('.group-result__member');
+        if (!member) return;
+        dragMemberId = Number(member.dataset.entryId);
+        dragSourceIdx = Number(member.closest('.group-result__group').dataset.index);
+        event.dataTransfer.effectAllowed = 'move';
+        /* Firefox requires some payload to enable dragging. */
+        event.dataTransfer.setData('text/plain', String(dragMemberId));
+        member.classList.add('is-dragging');
+      });
+
+      overlay.addEventListener('dragend', (event) => {
+        const member = event.target.closest('.group-result__member');
+        if (member) member.classList.remove('is-dragging');
+        overlay.querySelectorAll('.is-drop-target').forEach(el => el.classList.remove('is-drop-target'));
+        dragMemberId = null;
+        dragSourceIdx = null;
+      });
+
+      overlay.addEventListener('dragover', (event) => {
+        const target = event.target.closest('.group-result__group');
+        if (!target || dragMemberId === null) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        const idx = Number(target.dataset.index);
+        overlay.querySelectorAll('.group-result__group.is-drop-target').forEach(el => {
+          if (Number(el.dataset.index) !== idx) el.classList.remove('is-drop-target');
+        });
+        if (idx !== dragSourceIdx) target.classList.add('is-drop-target');
+      });
+
+      overlay.addEventListener('dragleave', (event) => {
+        const target = event.target.closest('.group-result__group');
+        if (!target) return;
+        if (!target.contains(event.relatedTarget)) target.classList.remove('is-drop-target');
+      });
+
+      overlay.addEventListener('drop', (event) => {
+        const target = event.target.closest('.group-result__group');
+        if (!target || dragMemberId === null) return;
+        event.preventDefault();
+        const targetIdx = Number(target.dataset.index);
+        target.classList.remove('is-drop-target');
+        if (targetIdx === dragSourceIdx) return;
+        moveGroupMember(dragSourceIdx, targetIdx, dragMemberId);
+        refreshGroupResultGroup(overlay, dragSourceIdx);
+        refreshGroupResultGroup(overlay, targetIdx);
+      });
+    }
+
+    function moveGroupMember(sourceIdx, targetIdx, memberId) {
+      if (!Array.isArray(currentGroupResult)) return;
+      const source = currentGroupResult[sourceIdx];
+      const target = currentGroupResult[targetIdx];
+      if (!source || !target) return;
+      const memberIdx = source.findIndex(m => m.id === memberId);
+      if (memberIdx < 0) return;
+      const [moved] = source.splice(memberIdx, 1);
+      target.push(moved);
     }
 
     function closeGroupResult(onDone) {

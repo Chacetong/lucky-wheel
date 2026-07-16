@@ -996,6 +996,23 @@ body.mode-grouping .group-stage {
   font-size: 0.95rem;
   font-weight: 700;
   min-width: 0;
+  cursor: grab;
+  user-select: none;
+  transition: opacity 160ms var(--ease-out);
+}
+
+.group-result__member:active {
+  cursor: grabbing;
+}
+
+.group-result__member.is-dragging {
+  opacity: 0.35;
+  cursor: grabbing;
+}
+
+.group-result__group.is-drop-target {
+  border-color: var(--green);
+  background: rgba(57, 244, 106, 0.06);
 }
 
 .group-result__dot {
