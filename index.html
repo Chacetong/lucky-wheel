@@ -14,13 +14,19 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 
-<body>
+<body class="is-preload">
   <div class="app">
     <main class="layout">
-      <section class="draw-stage" aria-labelledby="heroTitle">
+      <section class="draw-stage" aria-label="Lucky Wheel 主舞台">
         <div class="hero-copy" aria-hidden="true">
-          <span>WHO</span>
-          <span>WINS?</span>
+          <div class="hero-copy__layer" data-mode="lottery">
+            <span>WHO</span>
+            <span>WINS?</span>
+          </div>
+          <div class="hero-copy__layer" data-mode="grouping">
+            <span>RANDOM</span>
+            <span>GROUPS</span>
+          </div>
         </div>
 
         <div class="hero-title">
@@ -28,8 +34,16 @@
             <button type="button" class="mode-tab" data-mode="lottery" role="tab" aria-selected="true">抽奖</button>
             <button type="button" class="mode-tab" data-mode="grouping" role="tab" aria-selected="false">分组</button>
           </div>
-          <p class="hero-title__eyebrow">Who Wins</p>
-          <h1 id="heroTitle">谁是<br />幸运儿</h1>
+          <div class="hero-title__stack">
+            <div class="hero-title__body" data-mode="lottery">
+              <p class="hero-title__eyebrow">Who Wins</p>
+              <h1>谁是<br />幸运儿</h1>
+            </div>
+            <div class="hero-title__body" data-mode="grouping" aria-hidden="true">
+              <p class="hero-title__eyebrow">Random Groups</p>
+              <h1>谁和<br />谁一组</h1>
+            </div>
+          </div>
         </div>
 
         <div class="wheel-wrap">

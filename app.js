@@ -110,21 +110,6 @@
       return entries.reduce((sum, e) => sum + (e.weight || 1), 0);
     }
 
-    /* Copy variants shown in the hero title area for each mode. Keeping them
-       in one place makes future mode additions or text tweaks straightforward. */
-    const HERO_COPY = {
-      lottery: {
-        eyebrow: 'Who Wins',
-        title: '谁是<br>幸运儿',
-        backdrop: ['WHO', 'WINS?'],
-      },
-      grouping: {
-        eyebrow: 'Random Groups',
-        title: '谁和<br>谁一组',
-        backdrop: ['RANDOM', 'GROUPS'],
-      },
-    };
-
     function setMode(mode) {
       if (mode !== 'lottery' && mode !== 'grouping') return;
       currentMode = mode;
@@ -133,13 +118,8 @@
       document.querySelectorAll('.mode-tab').forEach(tab => {
         tab.setAttribute('aria-selected', String(tab.dataset.mode === mode));
       });
-      const copy = HERO_COPY[mode];
-      const eyebrow = document.querySelector('.hero-title__eyebrow');
-      const heading = document.getElementById('heroTitle');
-      if (eyebrow) eyebrow.textContent = copy.eyebrow;
-      if (heading) heading.innerHTML = copy.title;
-      document.querySelectorAll('.hero-copy span').forEach((span, i) => {
-        span.textContent = copy.backdrop[i] || '';
+      document.querySelectorAll('.hero-title__body').forEach(body => {
+        body.setAttribute('aria-hidden', String(body.dataset.mode !== mode));
       });
       const cancelHint = document.querySelector('.shortcut-hint--cancel');
       if (cancelHint) {
@@ -416,6 +396,12 @@
       setDistMode(distMode);
       syncGroupStage();
       setMode(currentMode);
+
+      /* is-preload globally short-circuits transitions/animations while the
+         initial mode state paints. Drop it once the first frame is committed. */
+      requestAnimationFrame(() => {
+        document.body.classList.remove('is-preload');
+      });
 
       /* Persist remove-toggle changes */
       const toggle = document.getElementById('removeToggle');

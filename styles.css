@@ -35,6 +35,50 @@ html {
   background: var(--black);
 }
 
+/* Suppress every transition/animation on the first frame so the initial mode
+   state paints without triggering a cross-fade from the pre-JS default. */
+body.is-preload,
+body.is-preload *,
+body.is-preload *::before,
+body.is-preload *::after {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* Page-entry starting state — matches each element's "inactive" position so
+   only the active-mode counterparts play the entrance transition when
+   is-preload is removed. !important ensures we beat mode-active rules that
+   share the same specificity but appear later in the cascade. */
+body.is-preload .hero-title,
+body.is-preload .hero-copy {
+  opacity: 0 !important;
+  transform: translateX(-48px) !important;
+}
+
+body.is-preload .wheel-wrap,
+body.is-preload .group-stage {
+  opacity: 0 !important;
+  transform: translateY(calc(-51% + 32px)) !important;
+}
+
+body.is-preload .draw-controls,
+body.is-preload .group-controls {
+  opacity: 0 !important;
+  transform: translateY(24px) !important;
+}
+
+body.is-preload .roster__header,
+body.is-preload .entries-list,
+body.is-preload .roster__actions {
+  opacity: 0 !important;
+  transform: translateX(24px) !important;
+}
+
+body.is-preload .shortcut-hint {
+  opacity: 0 !important;
+  transform: translateY(12px) !important;
+}
+
 body {
   min-width: 320px;
   min-height: 100dvh;
@@ -89,7 +133,6 @@ input {
   position: relative;
   min-width: 0;
   min-height: 0;
-  overflow: hidden;
   isolation: isolate;
   container-type: inline-size;
 }
@@ -97,13 +140,34 @@ input {
 .hero-copy {
   position: absolute;
   z-index: -2;
-  inset: 3% auto auto -0.035em;
+  inset: calc(clamp(28px, 5vh, 64px) + 42px) auto auto -0.035em;
   color: var(--deep-gray);
   font: italic 900 clamp(8rem, 23cqw, 16rem) / 0.68 var(--font-display);
   letter-spacing: -0.055em;
   pointer-events: none;
   user-select: none;
+  display: grid;
   transition: opacity 620ms var(--ease-out), transform 620ms var(--ease-out);
+}
+
+.hero-copy__layer {
+  grid-area: 1 / 1;
+  transition: opacity 400ms var(--ease-out), transform 400ms var(--ease-out);
+}
+
+.hero-copy__layer[data-mode="grouping"] {
+  opacity: 0;
+  transform: translateX(-48px);
+}
+
+body.mode-grouping .hero-copy__layer[data-mode="lottery"] {
+  opacity: 0;
+  transform: translateX(-48px);
+}
+
+body.mode-grouping .hero-copy__layer[data-mode="grouping"] {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .hero-copy span {
@@ -122,7 +186,6 @@ input {
   top: clamp(28px, 5vh, 64px);
   left: 0;
   max-width: 44%;
-  animation: titleIn 0.7s var(--ease-out) both;
   transition: opacity 520ms var(--ease-out), transform 620ms var(--ease-out);
 }
 
@@ -155,6 +218,30 @@ input {
   background: var(--green);
 }
 
+.hero-title__stack {
+  display: grid;
+}
+
+.hero-title__body {
+  grid-area: 1 / 1;
+  transition: opacity 400ms var(--ease-out), transform 400ms var(--ease-out);
+}
+
+.hero-title__body[data-mode="grouping"] {
+  opacity: 0;
+  transform: translateX(-48px);
+}
+
+body.mode-grouping .hero-title__body[data-mode="lottery"] {
+  opacity: 0;
+  transform: translateX(-48px);
+}
+
+body.mode-grouping .hero-title__body[data-mode="grouping"] {
+  opacity: 1;
+  transform: translateX(0);
+}
+
 .hero-title__eyebrow {
   margin-bottom: 4px;
   color: var(--green);
@@ -182,9 +269,14 @@ input {
   transform: translateY(-51%);
   display: grid;
   place-items: center;
-  animation: wheelIn 0.85s 0.08s var(--ease-out) both;
-  transition: transform 520ms var(--ease-out);
+  transition: transform 400ms var(--ease-out), opacity 400ms var(--ease-out);
   transform-origin: center;
+}
+
+body.mode-grouping .wheel-wrap {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(calc(-51% + 32px));
 }
 
 #wheelCanvas {
@@ -202,13 +294,20 @@ input {
   right: clamp(18px, 2.8cqw, 34px);
   width: clamp(460px, 75cqw, 704px);
   aspect-ratio: 1;
-  transform: translateY(-51%);
-  display: none;
+  transform: translateY(calc(-51% + 32px));
+  display: grid;
+  opacity: 0;
+  pointer-events: none;
   gap: clamp(10px, 1.4cqw, 18px);
   grid-template-columns: repeat(var(--group-cols, 2), 1fr);
   grid-template-rows: repeat(var(--group-rows, 1), 1fr);
-  animation: wheelIn 0.85s 0.08s var(--ease-out) both;
-  transition: transform 520ms var(--ease-out);
+  transition: transform 400ms var(--ease-out), opacity 400ms var(--ease-out);
+}
+
+body.mode-grouping .group-stage {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(-51%);
 }
 
 .group-slot {
@@ -267,6 +366,13 @@ input {
   display: flex;
   align-items: stretch;
   gap: 14px;
+  transition: opacity 400ms var(--ease-out), transform 400ms var(--ease-out);
+}
+
+body.mode-grouping .draw-controls {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(24px);
 }
 
 .mode-row,
@@ -381,25 +487,27 @@ input {
   white-space: nowrap;
 }
 
-/* Grouping controls: sits in the same slot as .draw-controls, visible only
-   when body.mode-grouping is active. */
+/* Grouping controls: sits in the same slot as .draw-controls; fades in when
+   body.mode-grouping is active so mode switching stays smooth. */
 .group-controls {
   position: absolute;
   z-index: 4;
   left: 0;
   right: clamp(18px, 2.4cqw, 34px);
   bottom: clamp(38px, 5vh, 58px);
-  display: none;
+  display: flex;
   align-items: stretch;
   gap: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(24px);
+  transition: opacity 400ms var(--ease-out), transform 400ms var(--ease-out);
 }
 
 body.mode-grouping .group-controls {
-  display: flex;
-}
-
-body.mode-grouping .group-stage {
-  display: grid;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
 }
 
 .group-count-input {
@@ -1349,11 +1457,6 @@ body.canceling .draw-stage {
 
 /* Grouping mode: hide the wheel-side controls and the weight column in the
    roster; the roster still holds the shared player list. */
-body.mode-grouping .wheel-wrap,
-body.mode-grouping .draw-controls {
-  display: none;
-}
-
 body.mode-grouping .stat-weight,
 body.mode-grouping .weight-label,
 body.mode-grouping .weight-input {
@@ -1362,16 +1465,6 @@ body.mode-grouping .weight-input {
 
 body.mode-grouping .entry-row {
   grid-template-columns: 30px 12px minmax(0, 1fr) 38px;
-}
-
-@keyframes titleIn {
-  from { opacity: 0; transform: translateX(-36px); }
-  to { opacity: 1; transform: none; }
-}
-
-@keyframes wheelIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
 
 @keyframes rowIn {
