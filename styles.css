@@ -79,6 +79,52 @@ body.is-preload .shortcut-hint {
   transform: translateY(12px) !important;
 }
 
+/* Page-entry orchestration — durations extended ~50% and staggered per
+   element for a rhythmic wave (hero → stage → controls, roster interleaved).
+   Applied briefly after is-preload is removed; base transitions resume for
+   mode switching once is-entering is cleared. */
+body.is-entering .hero-copy {
+  transition: opacity 930ms var(--ease-out), transform 930ms var(--ease-out);
+  transition-delay: 0ms;
+}
+
+body.is-entering .hero-title {
+  transition: opacity 780ms var(--ease-out), transform 930ms var(--ease-out);
+  transition-delay: 60ms;
+}
+
+body.is-entering .roster__header {
+  transition: opacity 780ms var(--ease-out), transform 930ms var(--ease-out);
+  transition-delay: 180ms;
+}
+
+body.is-entering .wheel-wrap,
+body.is-entering .group-stage {
+  transition: opacity 600ms var(--ease-out), transform 600ms var(--ease-out);
+  transition-delay: 240ms;
+}
+
+body.is-entering .entries-list {
+  transition: opacity 780ms var(--ease-out), transform 930ms var(--ease-out);
+  transition-delay: 320ms;
+}
+
+body.is-entering .draw-controls,
+body.is-entering .group-controls {
+  transition: opacity 600ms var(--ease-out), transform 600ms var(--ease-out);
+  transition-delay: 480ms;
+}
+
+body.is-entering .roster__actions {
+  transition: opacity 780ms var(--ease-out), transform 930ms var(--ease-out);
+  transition-delay: 560ms;
+}
+
+body.is-entering .shortcut-hint {
+  transition: opacity 780ms var(--ease-out), transform 780ms var(--ease-out);
+  transition-delay: 700ms;
+}
+
 body {
   min-width: 320px;
   min-height: 100dvh;

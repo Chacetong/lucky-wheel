@@ -398,9 +398,13 @@
       setMode(currentMode);
 
       /* is-preload globally short-circuits transitions/animations while the
-         initial mode state paints. Drop it once the first frame is committed. */
+         initial mode state paints. Drop it once the first frame is committed
+         and swap in is-entering so entry-only transitions (longer, staggered)
+         take over. Base transitions resume for mode switching afterward. */
       requestAnimationFrame(() => {
         document.body.classList.remove('is-preload');
+        document.body.classList.add('is-entering');
+        setTimeout(() => document.body.classList.remove('is-entering'), 1800);
       });
 
       /* Persist remove-toggle changes */
