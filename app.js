@@ -158,6 +158,29 @@
       return Math.max(2, Math.min(entries.length || 2, GROUP_MAX));
     }
 
+    /* Compute the planned member count for each group given the current
+       distribution mode. Same math as assignEntriesToGroups but returns
+       counts only — used by the idle preview slots. */
+    function groupSizes(n, k, mode) {
+      const sizes = new Array(k).fill(0);
+      if (n <= 0 || k <= 0) return sizes;
+      if (mode === 'even') {
+        const base = Math.floor(n / k);
+        const remainder = n % k;
+        for (let i = 0; i < k; i++) sizes[i] = base + (i < remainder ? 1 : 0);
+      } else {
+        const per = Math.ceil(n / k);
+        let assigned = 0;
+        for (let i = 0; i < k - 1 && assigned < n; i++) {
+          const size = Math.min(per, n - assigned);
+          sizes[i] = size;
+          assigned += size;
+        }
+        sizes[k - 1] = Math.max(0, n - assigned);
+      }
+      return sizes;
+    }
+
     function renderGroupStage() {
       const stage = document.getElementById('groupStage');
       if (!stage) return;
@@ -165,6 +188,7 @@
       const [cols, rows] = groupGridLayout(n);
       stage.style.setProperty('--group-cols', cols);
       stage.style.setProperty('--group-rows', rows);
+      const sizes = groupSizes(entries.length, n, distMode);
       stage.innerHTML = '';
       for (let i = 0; i < n; i++) {
         const slot = document.createElement('div');
@@ -172,7 +196,7 @@
         slot.dataset.index = i;
         slot.innerHTML = `
           <div class="group-slot__header">Group ${String(i + 1).padStart(2, '0')}</div>
-          <div class="group-slot__count">待分配</div>
+          <div class="group-slot__count"><strong>${sizes[i]}</strong><span>名候选</span></div>
         `;
         stage.appendChild(slot);
       }
@@ -287,6 +311,7 @@
         btn.classList.toggle('is-active', active);
         btn.setAttribute('aria-pressed', String(active));
       });
+      renderGroupStage();
       saveState();
     }
 
@@ -1087,9 +1112,7 @@
           </div>
           <ul class="group-result__list">
             ${members.map(e => `
-              <li class="group-result__member" draggable="true" data-entry-id="${e.id}" style="--dot-color:${e.color}">
-                <span class="group-result__dot" aria-hidden="true"></span>${esc(e.title)}
-              </li>
+              <li class="group-result__member" draggable="true" data-entry-id="${e.id}" style="background:${e.color}">${esc(e.title)}</li>
             `).join('')}
           </ul>
         </div>

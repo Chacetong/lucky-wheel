@@ -347,6 +347,7 @@ body.mode-grouping .wheel-wrap {
   gap: clamp(10px, 1.4cqw, 18px);
   grid-template-columns: repeat(var(--group-cols, 2), 1fr);
   grid-template-rows: repeat(var(--group-rows, 1), 1fr);
+  container-type: inline-size;
   transition: transform 400ms var(--ease-out), opacity 400ms var(--ease-out);
 }
 
@@ -364,19 +365,46 @@ body.mode-grouping .group-stage {
   flex-direction: column;
   gap: 6px;
   overflow: hidden;
+  background: var(--black);
   border: 2px solid var(--white);
+  transform: skewX(-8deg);
 }
 
+/* Counter-skew direct children so text remains readable while the box
+   itself becomes a parallelogram matching the italic display type. */
+.group-slot > * {
+  transform: skewX(8deg);
+}
+
+/* Header scales with slot size — 100cqw / cols ≈ single slot width, times a
+   factor gives a header sized to each block. Italic display matches the
+   hero-copy IMPACT DRAW voice. */
 .group-slot__header {
   color: var(--white);
-  font: 900 clamp(1.1rem, 2.2cqw, 1.8rem)/1 var(--font-display);
+  font: italic 900 clamp(1.5rem, calc(100cqw / var(--group-cols, 2) * 0.17), 5.25rem)/0.9 var(--font-display);
+  letter-spacing: -0.03em;
+}
+
+/* Count reads like a sports jersey: the number takes the size, the label
+   shrinks to uppercase caption. Green marks the "victory" beat. */
+.group-slot__count {
+  margin-top: auto;
+  display: flex;
+  align-items: baseline;
+  gap: 0.35em;
+  color: var(--gray);
+}
+
+.group-slot__count strong {
+  color: var(--green);
+  font: 900 clamp(1.6rem, calc(100cqw / var(--group-cols, 2) * 0.16), 4.5rem)/1 var(--font-display);
   letter-spacing: -0.02em;
 }
 
-.group-slot__count {
-  color: var(--gray);
-  font: 700 0.72rem/1 var(--font-display);
-  letter-spacing: 0.08em;
+.group-slot__count span {
+  font: 700 clamp(0.6rem, calc(100cqw / var(--group-cols, 2) * 0.035), 0.85rem)/1 var(--font-ui);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .group-slot__list {
@@ -1142,7 +1170,7 @@ body.mode-grouping .group-controls {
   display: grid;
   grid-template-columns: repeat(var(--result-cols, 3), minmax(0, 1fr));
   gap: clamp(12px, 1.6vw, 24px);
-  padding: clamp(24px, 3vw, 48px) 0;
+  padding: clamp(24px, 3vw, 48px) clamp(20px, 2.4vw, 36px);
   overflow: auto;
   animation: winnerIn 520ms 160ms var(--ease-out) both;
 }
@@ -1153,7 +1181,12 @@ body.mode-grouping .group-controls {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  border: 2px solid var(--result-ink, var(--white));
+  background: var(--black);
+  transform: skewX(-8deg);
+}
+
+.group-result__group > * {
+  transform: skewX(8deg);
 }
 
 .group-result__header {
@@ -1161,9 +1194,9 @@ body.mode-grouping .group-controls {
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  color: var(--result-ink, var(--white));
-  font: 900 clamp(1.05rem, 1.6vw, 1.5rem)/1 var(--font-display);
-  letter-spacing: -0.02em;
+  color: var(--white);
+  font: italic 900 clamp(1.4rem, 2.2vw, 2.3rem)/0.9 var(--font-display);
+  letter-spacing: -0.03em;
 }
 
 .group-result__count {
@@ -1178,18 +1211,19 @@ body.mode-grouping .group-controls {
   padding: 0;
   margin: 0;
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
+/* Member chip — matches the animation-phase card treatment: entry's palette
+   color as background, black text. Keeps the lottery/grouping color language
+   consistent. */
 .group-result__member {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--result-ink, var(--white));
+  padding: 6px 12px;
+  color: var(--black);
   font-size: 0.95rem;
-  font-weight: 700;
-  min-width: 0;
+  font-weight: 800;
+  white-space: nowrap;
   cursor: grab;
   user-select: none;
   transition: opacity 160ms var(--ease-out);
@@ -1205,15 +1239,9 @@ body.mode-grouping .group-controls {
 }
 
 .group-result__group.is-drop-target {
-  border-color: var(--green);
-  background: rgba(57, 244, 106, 0.06);
-}
-
-.group-result__dot {
-  flex-shrink: 0;
-  width: 10px;
-  height: 22px;
-  background: var(--dot-color, var(--white));
+  outline: 2px solid var(--green);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--green) 10%, var(--black));
 }
 
 
