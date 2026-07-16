@@ -652,7 +652,7 @@
     ================================================================ */
     function handleSpin(restoreWinner = null) {
       if (entries.length < 2) {
-        showToast('⚠️ 至少需要 2 位参与者才能开始抽奖');
+        showToast('⚠️ 至少需要 2 位参与者才能开始抽奖', { global: true });
         return;
       }
       if (spinning) return;
@@ -730,6 +730,7 @@
       document.body.classList.remove('spinning');
       document.body.classList.add('canceling');
       syncUI();
+      showToast('抽奖已取消', { global: true });
 
       const twoPi = Math.PI * 2;
       const startRotation = rotation;
@@ -920,23 +921,27 @@
       const restoreWinner = currentModalWinner;
       closeModal(() => {
         if (entries.length >= 2) handleSpin(restoreWinner);
-        else showToast('⚠️ 参与者不足，无法继续抽奖');
+        else showToast('⚠️ 参与者不足，无法继续抽奖', { global: true });
       });
     }
 
     /* ================================================================
        Toast
     ================================================================ */
-    function showToast(msg) {
-      const root = document.getElementById('toastRoot');
+    /* Toasts default to the roster panel (for entry-related feedback).
+       Pass { global: true } for抽奖 flow feedback that should surface at
+       the viewport's center. */
+    function showToast(msg, { global = false } = {}) {
+      const root = document.getElementById(global ? 'globalToastRoot' : 'toastRoot');
+      if (!root) return;
       const toast = document.createElement('div');
       toast.className = 'toast';
       toast.textContent = msg;
       root.appendChild(toast);
       setTimeout(() => {
         toast.classList.add('out');
-        setTimeout(() => toast.remove(), 300);
-      }, 2800);
+        setTimeout(() => toast.remove(), 200);
+      }, 1500);
     }
 
     /* ================================================================

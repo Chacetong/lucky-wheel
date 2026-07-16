@@ -896,6 +896,19 @@ input {
   pointer-events: none;
 }
 
+/* Global toast surface: viewport-anchored, below the vertical center. */
+#globalToastRoot {
+  position: fixed;
+  z-index: var(--z-toast);
+  left: 50%;
+  bottom: 22%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 6px;
+  pointer-events: none;
+}
+
 .toast {
   padding: 13px 18px;
   background: var(--white);
@@ -904,11 +917,11 @@ input {
   font-size: 0.82rem;
   font-weight: 800;
   white-space: nowrap;
-  animation: toastIn 220ms var(--ease-out) both;
+  animation: toastIn 200ms var(--ease-out) both;
 }
 
 .toast.out {
-  animation: fadeOut 180ms ease-in both;
+  animation: fadeOut 200ms ease-in both;
 }
 
 /* Motion */
