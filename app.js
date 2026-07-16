@@ -1108,7 +1108,7 @@
         <div class="group-result__group" data-index="${groupIdx}">
           <div class="group-result__header">
             Group ${String(groupIdx + 1).padStart(2, '0')}
-            <span class="group-result__count">${members.length}</span>
+            <span class="group-result__count" data-count="${members.length}">人</span>
           </div>
           <ul class="group-result__list">
             ${members.map(e => `

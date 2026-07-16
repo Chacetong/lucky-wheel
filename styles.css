@@ -1170,8 +1170,8 @@ body.mode-grouping .group-controls {
   display: grid;
   grid-template-columns: repeat(var(--result-cols, 3), minmax(0, 1fr));
   gap: clamp(12px, 1.6vw, 24px);
-  padding: clamp(24px, 3vw, 48px) clamp(20px, 2.4vw, 36px);
-  overflow: auto;
+  padding: clamp(24px, 3vw, 48px) 0;
+  overflow: visible;
   animation: winnerIn 520ms 160ms var(--ease-out) both;
 }
 
@@ -1195,15 +1195,25 @@ body.mode-grouping .group-controls {
   justify-content: space-between;
   gap: 10px;
   color: var(--white);
-  font: italic 900 clamp(1.4rem, 2.2vw, 2.3rem)/0.9 var(--font-display);
+  font: italic 900 clamp(2rem, 3.4vw, 3.5rem)/0.9 var(--font-display);
   letter-spacing: -0.03em;
 }
 
 .group-result__count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2em;
   color: var(--gray);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font: 700 clamp(0.75rem, 0.95vw, 1rem)/1 var(--font-ui);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.group-result__count::before {
+  content: attr(data-count);
+  color: var(--green);
+  font: italic 900 clamp(1.8rem, 3vw, 3rem)/0.9 var(--font-display);
+  letter-spacing: -0.02em;
 }
 
 .group-result__list {
