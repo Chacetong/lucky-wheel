@@ -389,6 +389,8 @@
         tab.addEventListener('click', () => setMode(tab.dataset.mode));
       });
 
+      bindTooltipDelegation();
+
       const groupCountInput = document.getElementById('groupCount');
       if (groupCountInput) {
         groupCountInput.addEventListener('input', () => updateGroupCount(groupCountInput.value));
@@ -1466,6 +1468,56 @@
       closeModal(() => {
         if (entries.length >= 2) handleSpin(restoreWinner);
         else showToast('⚠️ 参与者不足，无法继续抽奖', { global: true });
+      });
+    }
+
+    /* ================================================================
+       Tooltip (portaled to body to escape ancestor overflow clipping)
+    ================================================================ */
+    function bindTooltipDelegation() {
+      const tooltip = document.createElement('div');
+      tooltip.className = 'tooltip';
+      tooltip.setAttribute('role', 'tooltip');
+      tooltip.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(tooltip);
+
+      function show(target) {
+        const text = target.dataset.tooltip;
+        if (!text) return;
+        tooltip.textContent = text;
+        tooltip.setAttribute('aria-hidden', 'false');
+        tooltip.classList.add('is-visible');
+        /* Measure after content set so width is accurate, then clamp inside vp. */
+        const rect = target.getBoundingClientRect();
+        const tRect = tooltip.getBoundingClientRect();
+        const gap = 10;
+        let left = rect.left + rect.width / 2 - tRect.width / 2;
+        left = Math.max(8, Math.min(left, window.innerWidth - tRect.width - 8));
+        tooltip.style.left = `${Math.round(left)}px`;
+        tooltip.style.top = `${Math.round(rect.top - tRect.height - gap)}px`;
+      }
+
+      function hide() {
+        tooltip.classList.remove('is-visible');
+        tooltip.setAttribute('aria-hidden', 'true');
+      }
+
+      document.addEventListener('mouseover', (event) => {
+        const trigger = event.target.closest('[data-tooltip]');
+        if (trigger) show(trigger);
+      });
+      document.addEventListener('mouseout', (event) => {
+        const trigger = event.target.closest('[data-tooltip]');
+        if (!trigger) return;
+        if (!trigger.contains(event.relatedTarget)) hide();
+      });
+      document.addEventListener('focusin', (event) => {
+        const trigger = event.target.closest('[data-tooltip]');
+        if (trigger) show(trigger);
+      });
+      document.addEventListener('focusout', (event) => {
+        const trigger = event.target.closest('[data-tooltip]');
+        if (trigger) hide();
       });
     }
 

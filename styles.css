@@ -128,9 +128,9 @@ input {
 
 .mode-tabs {
   display: inline-flex;
-  gap: 4px;
+  gap: 0;
   margin-bottom: 14px;
-  padding: 3px;
+  padding: 0;
   border: 1px solid var(--line);
   background: var(--black);
 }
@@ -143,6 +143,11 @@ input {
   letter-spacing: 0.04em;
   cursor: pointer;
   transition: color 160ms var(--ease-out), background 160ms var(--ease-out);
+}
+
+.mode-tab:not([aria-selected="true"]):hover {
+  color: var(--white);
+  background: var(--deep-gray);
 }
 
 .mode-tab[aria-selected="true"] {
@@ -447,6 +452,7 @@ body.mode-grouping .group-stage {
 }
 
 .group-dist__btn {
+  position: relative;
   min-width: 76px;
   padding: 0 18px;
   background: transparent;
@@ -455,6 +461,33 @@ body.mode-grouping .group-stage {
   font-weight: 800;
   cursor: pointer;
   transition: color 160ms var(--ease-out), background 160ms var(--ease-out);
+}
+
+/* Portaled tooltip: single body-level element positioned via JS so overflow:
+   hidden on .draw-stage never clips it. */
+.tooltip {
+  position: fixed;
+  z-index: 9999;
+  padding: 7px 12px;
+  background: var(--white);
+  color: var(--black);
+  font: 800 0.72rem/1 var(--font-ui);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out);
+}
+
+.tooltip.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.group-dist__btn:not(.is-active):hover {
+  color: var(--white);
+  background: var(--deep-gray);
 }
 
 .group-dist__btn.is-active {
