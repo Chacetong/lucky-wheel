@@ -1024,8 +1024,8 @@
       const overlay = document.createElement('div');
       overlay.className = 'overlay group-overlay';
       overlay.id = 'groupResultOverlay';
-      overlay.style.setProperty('--winner-color', 'var(--black)');
-      overlay.style.setProperty('--result-ink', 'var(--white)');
+      overlay.style.setProperty('--winner-color', 'var(--soft-gray)');
+      overlay.style.setProperty('--result-ink', 'var(--black)');
 
       const [cols] = groupGridLayout(groups.length);
 
@@ -1037,7 +1037,7 @@
           </div>
           <div class="modal__actions">
             <button type="button" class="btn btn--primary" data-action="regroup">
-              <span>重新随机</span>
+              <span>重新分组</span>
               <span class="spin-btn__arrow-stage" aria-hidden="true">
                 <svg class="spin-btn__arrow spin-btn__arrow--current" width="96" height="48" viewBox="0 0 96 48" fill="none" xmlns="http://www.w3.org/2000/svg" focusable="false">
                   <path d="M0 24H96M96 24C82.7452 24 72 13.2548 72 0M96 24C82.7452 24 72 34.7452 72 48" stroke="currentColor" stroke-width="8" />
