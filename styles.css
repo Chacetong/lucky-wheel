@@ -1220,13 +1220,15 @@ body.spinning .hero-copy {
 }
 
 body.spinning .mode-row,
-body.spinning .shortcut-hint:not(.shortcut-hint--cancel) {
+body.spinning .shortcut-hint:not(.shortcut-hint--cancel),
+body.grouping-active .shortcut-hint:not(.shortcut-hint--cancel) {
   opacity: 0;
   transform: translateY(12px);
   pointer-events: none;
 }
 
-body.spinning .shortcut-hint--cancel {
+body.spinning .shortcut-hint--cancel,
+body.grouping-active .shortcut-hint--cancel {
   opacity: 1;
   transform: none;
 }
@@ -1303,8 +1305,11 @@ body.canceling .draw-stage {
 /* Grouping mode: hide the wheel-side controls and the weight column in the
    roster; the roster still holds the shared player list. */
 body.mode-grouping .wheel-wrap,
-body.mode-grouping .draw-controls,
-body.mode-grouping .shortcut-hint {
+body.mode-grouping .draw-controls {
+  display: none;
+}
+
+body.mode-grouping .shortcut-hint:not(.shortcut-hint--cancel) {
   display: none;
 }
 

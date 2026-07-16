@@ -78,6 +78,7 @@
     let spinning = false;
     let grouping = false;
     let currentGroupResult = null; // Array of Array<entry> — set after grouping completes
+    let groupAnimTimers = { chaos: null, settle: null };
     let modalOpen = false;
     let rotation = 0;         // current canvas rotation (radians)
     let rafId = null;
@@ -140,6 +141,10 @@
       document.querySelectorAll('.hero-copy span').forEach((span, i) => {
         span.textContent = copy.backdrop[i] || '';
       });
+      const cancelHint = document.querySelector('.shortcut-hint--cancel');
+      if (cancelHint) {
+        cancelHint.textContent = mode === 'lottery' ? '按 ESC 取消抽奖' : '按 ESC 取消分组';
+      }
       if (mode === 'lottery') {
         resizeCanvas();
         redraw();
@@ -423,7 +428,12 @@
           cancelSpin();
           return;
         }
-        if (modalOpen || spinning) return;
+        if (grouping && e.key === 'Escape') {
+          e.preventDefault();
+          cancelGrouping();
+          return;
+        }
+        if (modalOpen || spinning || grouping) return;
         if (currentMode !== 'lottery') return;
         if (e.code !== 'Space' && e.code !== 'Enter') return;
         const tag = (e.target && e.target.tagName) || '';
@@ -918,7 +928,7 @@
         const elapsed = performance.now() - chaosStart;
         if (elapsed >= CHAOS_DURATION) {
           renderGroupSlots(finalGroups);
-          setTimeout(() => {
+          groupAnimTimers.settle = setTimeout(() => {
             if (!grouping) return;
             finishGroupingAnimation();
           }, reduceMotion ? 200 : 480);
@@ -926,9 +936,34 @@
         }
         renderGroupSlots(sampleRandomGroups(finalGroups));
         const interval = 120 + iteration * 20;
-        setTimeout(() => chaosStep(iteration + 1), Math.min(interval, 260));
+        groupAnimTimers.chaos = setTimeout(() => chaosStep(iteration + 1), Math.min(interval, 260));
       }
       chaosStep(0);
+    }
+
+    /* Abort the grouping animation and slide the stage back to its resting
+       position. Mirrors cancelSpin's flow and reuses .canceling to keep the
+       stage above the roster during the 520ms return. */
+    function cancelGrouping() {
+      if (!grouping) return;
+      if (groupAnimTimers.chaos !== null) {
+        clearTimeout(groupAnimTimers.chaos);
+        groupAnimTimers.chaos = null;
+      }
+      if (groupAnimTimers.settle !== null) {
+        clearTimeout(groupAnimTimers.settle);
+        groupAnimTimers.settle = null;
+      }
+      grouping = false;
+      currentGroupResult = null;
+      document.body.classList.remove('grouping-active');
+      document.body.classList.add('canceling');
+      syncUI();
+      showToast('分组已取消', { global: true });
+      setTimeout(() => {
+        document.body.classList.remove('canceling');
+        renderGroupStage();
+      }, 520);
     }
 
     /* Produce a size-matching but randomly-populated shuffle for the chaos
