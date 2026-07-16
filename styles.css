@@ -125,7 +125,31 @@ input {
   transition: opacity 520ms var(--ease-out), transform 620ms var(--ease-out);
 }
 
-.hero-title p {
+.mode-tabs {
+  display: inline-flex;
+  gap: 4px;
+  margin-bottom: 14px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  background: var(--black);
+}
+
+.mode-tab {
+  padding: 6px 14px;
+  background: transparent;
+  color: var(--gray);
+  font: 800 0.74rem/1 var(--font-ui);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 160ms var(--ease-out), background 160ms var(--ease-out);
+}
+
+.mode-tab[aria-selected="true"] {
+  color: var(--black);
+  background: var(--green);
+}
+
+.hero-title__eyebrow {
   margin-bottom: 4px;
   color: var(--green);
   font-size: 0.85rem;
@@ -985,6 +1009,24 @@ body.canceling .draw-stage {
   overflow: visible;
 }
 
+/* Grouping mode: hide the wheel-side controls and the weight column in the
+   roster; the roster still holds the shared player list. */
+body.mode-grouping .wheel-wrap,
+body.mode-grouping .draw-controls,
+body.mode-grouping .shortcut-hint {
+  display: none;
+}
+
+body.mode-grouping .stat-weight,
+body.mode-grouping .weight-label,
+body.mode-grouping .weight-input {
+  display: none;
+}
+
+body.mode-grouping .entry-row {
+  grid-template-columns: 30px 12px minmax(0, 1fr) 38px;
+}
+
 @keyframes titleIn {
   from { opacity: 0; transform: translateX(-36px); }
   to { opacity: 1; transform: none; }
@@ -1100,7 +1142,7 @@ body.canceling .draw-stage {
     max-width: 68%;
   }
 
-  .hero-title p {
+  .hero-title__eyebrow {
     margin-bottom: 7px;
     font-size: 0.76rem;
   }
@@ -1151,6 +1193,10 @@ body.canceling .draw-stage {
   .entry-row {
     grid-template-columns: 26px 9px minmax(0, 1fr) auto 48px 38px;
     gap: 6px;
+  }
+
+  body.mode-grouping .entry-row {
+    grid-template-columns: 26px 9px minmax(0, 1fr) 38px;
   }
 
   .entry-index {

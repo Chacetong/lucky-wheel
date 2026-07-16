@@ -24,7 +24,11 @@
         </div>
 
         <div class="hero-title">
-          <p>Who Wins</p>
+          <div class="mode-tabs" role="tablist" aria-label="模式切换">
+            <button type="button" class="mode-tab" data-mode="lottery" role="tab" aria-selected="true">抽奖</button>
+            <button type="button" class="mode-tab" data-mode="grouping" role="tab" aria-selected="false">分组</button>
+          </div>
+          <p class="hero-title__eyebrow">Who Wins</p>
           <h1 id="heroTitle">谁是<br />幸运儿</h1>
         </div>
 
@@ -69,8 +73,8 @@
             <h2 id="rosterTitle">选手阵容</h2>
           </div>
           <div class="stats-row" aria-label="阵容统计">
-            <span><b id="statCount">0</b> 人</span>
-            <span><b id="statWeight">0</b> 权重</span>
+            <span class="stat-count"><b id="statCount">0</b> 人</span>
+            <span class="stat-weight"><b id="statWeight">0</b> 权重</span>
           </div>
         </header>
 
