@@ -687,7 +687,6 @@
         ? (1 + Math.random()) * Math.PI * 2
         : (6 + Math.random()) * Math.PI * 2;
       const from = rotation;
-      const to = from + fullSpins;
       const duration = reduceMotion
         ? 700
         : 4500 + Math.random() * 1200;
@@ -695,15 +694,14 @@
 
       function tick(now) {
         const t = Math.min((now - t0) / duration, 1);
-        const r = from + fullSpins * easeSpin(t);
-        drawWheel(r);
+        /* Update global rotation each frame so external readers (resize,
+           cancelSpin) always see the current visual angle. */
+        rotation = from + fullSpins * easeSpin(t);
+        drawWheel(rotation);
 
         if (t < 1) {
           rafId = requestAnimationFrame(tick);
         } else {
-          rotation = to;
-          drawWheel(rotation);
-
           spinning = false;
           document.body.classList.remove('spinning');
           syncUI();
@@ -716,24 +714,49 @@
       rafId = requestAnimationFrame(tick);
     }
 
-    /* Abort the current spin animation and restore the pre-spin state. If the
-       spin was triggered from a result modal (spinAgain), reopen that modal
-       with the previous winner; otherwise fall back to the idle home state. */
+    /* Abort the current spin animation and restore the pre-spin state. The
+       wheel eases clockwise back to its resting angle (<= 360°) so the
+       transition mirrors the wheel-wrap scale-back timing. `.canceling`
+       keeps the draw-stage above the roster during the return so the
+       shrinking wheel is never clipped or occluded. */
     function cancelSpin() {
       if (!spinning) return;
       if (rafId !== null) {
         cancelAnimationFrame(rafId);
         rafId = null;
       }
-      rotation = preSpinRotation;
-      drawWheel(rotation);
+
       spinning = false;
       document.body.classList.remove('spinning');
+      document.body.classList.add('canceling');
       syncUI();
 
-      const restore = restoreWinnerOnCancel;
-      restoreWinnerOnCancel = null;
-      if (restore) showResult(restore);
+      const twoPi = Math.PI * 2;
+      const startRotation = rotation;
+      const delta = ((preSpinRotation - startRotation) % twoPi + twoPi) % twoPi;
+      const endRotation = startRotation + delta;
+
+      const CANCEL_DURATION = 520;
+      const easeOut = t => 1 - Math.pow(1 - t, 3);
+      const t0 = performance.now();
+
+      function tick(now) {
+        const t = Math.min((now - t0) / CANCEL_DURATION, 1);
+        drawWheel(startRotation + delta * easeOut(t));
+        if (t < 1) {
+          rafId = requestAnimationFrame(tick);
+          return;
+        }
+        rotation = endRotation;
+        drawWheel(rotation);
+        rafId = null;
+        document.body.classList.remove('canceling');
+        const restore = restoreWinnerOnCancel;
+        restoreWinnerOnCancel = null;
+        if (restore) showResult(restore);
+      }
+
+      rafId = requestAnimationFrame(tick);
     }
 
     /* Determine which segment the pointer (12-o-clock) lands on */

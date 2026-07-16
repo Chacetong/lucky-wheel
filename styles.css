@@ -965,6 +965,13 @@ body.spinning .wheel-wrap {
     ) scale(var(--spin-scale, 1.2));
 }
 
+/* Cancel-in-progress: keep the shrinking wheel above the fading-in roster so
+   the roster's content does not clip or occlude it during the 520ms return. */
+body.canceling .draw-stage {
+  z-index: 20;
+  overflow: visible;
+}
+
 @keyframes titleIn {
   from { opacity: 0; transform: translateX(-36px); }
   to { opacity: 1; transform: none; }
