@@ -76,6 +76,8 @@
     let groupCount = 2;
     let distMode = 'even';   // 'even' | 'fill'
     let spinning = false;
+    let grouping = false;
+    let currentGroupResult = null; // Array of Array<entry> — set after grouping completes
     let modalOpen = false;
     let rotation = 0;         // current canvas rotation (radians)
     let rafId = null;
@@ -248,7 +250,48 @@
         showToast('⚠️ 至少需要 2 位参与者才能分组', { global: true });
         return;
       }
-      /* Grouping animation & result modal land in S3. */
+      if (grouping) return;
+      const k = Math.max(2, Math.min(groupCount, entries.length));
+      const assignment = assignEntriesToGroups(entries, k, distMode);
+      runGroupingAnimation(assignment);
+    }
+
+    /* Fisher–Yates copy; caller keeps their original array intact. */
+    function shuffledEntries(list) {
+      const arr = list.slice();
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    /* Returns an array of k sub-arrays according to the distribution mode.
+       'even'  → sizes differ by at most 1 (13/4 → 4,3,3,3)
+       'fill'  → first k−1 groups take ceil(n/k), last group takes remainder
+                 (13/4 → 4,4,4,1) */
+    function assignEntriesToGroups(list, k, mode) {
+      const shuffled = shuffledEntries(list);
+      const n = shuffled.length;
+      const groups = Array.from({ length: k }, () => []);
+
+      if (mode === 'even') {
+        const base = Math.floor(n / k);
+        const remainder = n % k;
+        let idx = 0;
+        for (let g = 0; g < k; g++) {
+          const size = base + (g < remainder ? 1 : 0);
+          for (let s = 0; s < size; s++) groups[g].push(shuffled[idx++]);
+        }
+      } else {
+        const per = Math.ceil(n / k);
+        let idx = 0;
+        for (let g = 0; g < k - 1 && idx < n; g++) {
+          for (let s = 0; s < per && idx < n; s++) groups[g].push(shuffled[idx++]);
+        }
+        while (idx < n) groups[k - 1].push(shuffled[idx++]);
+      }
+      return groups;
     }
 
     function setDistMode(mode) {
@@ -827,7 +870,7 @@
     }
 
     function updateLock() {
-      const locked = spinning || modalOpen;
+      const locked = spinning || grouping || modalOpen;
       const panel = document.querySelector('.roster');
       if (!panel) return;
       panel.inert = locked;
@@ -838,6 +881,185 @@
       const total = totalWeight();
       document.getElementById('statCount').textContent = entries.length;
       document.getElementById('statWeight').textContent = Number.isInteger(total) ? total : total.toFixed(1);
+    }
+
+    /* ================================================================
+       Grouping animation
+    ================================================================ */
+    function runGroupingAnimation(finalGroups) {
+      grouping = true;
+      currentGroupResult = finalGroups;
+
+      const stage = document.getElementById('groupStage');
+      if (!stage) return;
+      renderGroupStage();
+
+      /* Move the stage to viewport center (mirrors the spin transform). */
+      const rect = stage.getBoundingClientRect();
+      const shiftX = window.innerWidth / 2 - (rect.left + rect.width / 2);
+      const shiftY = window.innerHeight / 2 - (rect.top + rect.height / 2);
+      stage.style.setProperty('--group-shift-x', `${shiftX.toFixed(1)}px`);
+      stage.style.setProperty('--group-shift-y', `${shiftY.toFixed(1)}px`);
+      const viewportShort = Math.min(window.innerWidth, window.innerHeight);
+      const safeMargin = Math.max(24, viewportShort * 0.04);
+      const availableSize = viewportShort - safeMargin * 2;
+      const scale = Math.max(1, availableSize / rect.width);
+      stage.style.setProperty('--group-scale', scale.toFixed(3));
+
+      document.body.classList.add('grouping-active');
+      syncUI();
+
+      const reduceMotion = prefersReducedMotion();
+      const CHAOS_DURATION = reduceMotion ? 400 : 1600;
+      const chaosStart = performance.now();
+
+      function chaosStep(iteration) {
+        if (!grouping) return;
+        const elapsed = performance.now() - chaosStart;
+        if (elapsed >= CHAOS_DURATION) {
+          renderGroupSlots(finalGroups);
+          setTimeout(() => {
+            if (!grouping) return;
+            finishGroupingAnimation();
+          }, reduceMotion ? 200 : 480);
+          return;
+        }
+        renderGroupSlots(sampleRandomGroups(finalGroups));
+        const interval = 120 + iteration * 20;
+        setTimeout(() => chaosStep(iteration + 1), Math.min(interval, 260));
+      }
+      chaosStep(0);
+    }
+
+    /* Produce a size-matching but randomly-populated shuffle for the chaos
+       phase, so each slot flashes plausible-looking names of the right count. */
+    function sampleRandomGroups(finalGroups) {
+      const shuffled = shuffledEntries(entries);
+      let idx = 0;
+      return finalGroups.map(group => {
+        const picks = [];
+        for (let i = 0; i < group.length; i++) {
+          picks.push(shuffled[idx % shuffled.length]);
+          idx++;
+        }
+        return picks;
+      });
+    }
+
+    function renderGroupSlots(groups) {
+      const stage = document.getElementById('groupStage');
+      if (!stage) return;
+      const [cols, rows] = groupGridLayout(groups.length);
+      stage.style.setProperty('--group-cols', cols);
+      stage.style.setProperty('--group-rows', rows);
+      stage.innerHTML = '';
+      groups.forEach((members, i) => {
+        const slot = document.createElement('div');
+        slot.className = 'group-slot';
+        slot.dataset.index = i;
+        slot.innerHTML = `
+          <div class="group-slot__header">Group ${String(i + 1).padStart(2, '0')}</div>
+          <div class="group-slot__list">
+            ${members.map(e => `<div class="group-card" style="background:${e.color}">${esc(e.title)}</div>`).join('')}
+          </div>
+        `;
+        stage.appendChild(slot);
+      });
+    }
+
+    function finishGroupingAnimation() {
+      grouping = false;
+      document.body.classList.remove('grouping-active');
+      syncUI();
+      showGroupResult(currentGroupResult);
+    }
+
+    /* ================================================================
+       Group result modal (fullscreen takeover)
+    ================================================================ */
+    function showGroupResult(groups) {
+      if (!groups) return;
+      closeModal();
+
+      const overlay = document.createElement('div');
+      overlay.className = 'overlay group-overlay';
+      overlay.id = 'groupResultOverlay';
+      overlay.style.setProperty('--winner-color', 'var(--black)');
+      overlay.style.setProperty('--result-ink', 'var(--white)');
+
+      const [cols] = groupGridLayout(groups.length);
+
+      overlay.innerHTML = `
+        <div class="modal group-modal" role="dialog" aria-modal="true" aria-labelledby="groupResultTitle">
+          <div class="modal__label" id="groupResultTitle" aria-hidden="true">RANDOM<br>GROUPS<br>OK</div>
+          <div class="group-result" style="--result-cols: ${cols}">
+            ${groups.map((members, i) => `
+              <div class="group-result__group" data-index="${i}">
+                <div class="group-result__header">Group ${String(i + 1).padStart(2, '0')}<span class="group-result__count">${members.length}</span></div>
+                <ul class="group-result__list">
+                  ${members.map(e => `<li class="group-result__member" style="--dot-color:${e.color}"><span class="group-result__dot" aria-hidden="true"></span>${esc(e.title)}</li>`).join('')}
+                </ul>
+              </div>
+            `).join('')}
+          </div>
+          <div class="modal__actions">
+            <button type="button" class="btn btn--primary" data-action="regroup">
+              <span>重新随机</span>
+              <span class="spin-btn__arrow-stage" aria-hidden="true">
+                <svg class="spin-btn__arrow spin-btn__arrow--current" width="96" height="48" viewBox="0 0 96 48" fill="none" xmlns="http://www.w3.org/2000/svg" focusable="false">
+                  <path d="M0 24H96M96 24C82.7452 24 72 13.2548 72 0M96 24C82.7452 24 72 34.7452 72 48" stroke="currentColor" stroke-width="8" />
+                </svg>
+                <svg class="spin-btn__arrow spin-btn__arrow--next" width="96" height="48" viewBox="0 0 96 48" fill="none" xmlns="http://www.w3.org/2000/svg" focusable="false">
+                  <path d="M0 24H96M96 24C82.7452 24 72 13.2548 72 0M96 24C82.7452 24 72 34.7452 72 48" stroke="currentColor" stroke-width="8" />
+                </svg>
+              </span>
+            </button>
+            <button type="button" class="btn btn--ghost" data-action="close">关闭</button>
+          </div>
+        </div>`;
+
+      modalOpen = true;
+      document.body.appendChild(overlay);
+      updateLock();
+
+      const primaryBtn = overlay.querySelector('.btn--primary');
+      if (primaryBtn) primaryBtn.focus();
+
+      const onKey = (e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          closeGroupResult();
+        }
+      };
+      document.addEventListener('keydown', onKey);
+      overlay._cleanup = () => document.removeEventListener('keydown', onKey);
+
+      overlay.addEventListener('click', (event) => {
+        const trigger = event.target.closest('[data-action]');
+        if (trigger) {
+          if (trigger.dataset.action === 'regroup') {
+            closeGroupResult(() => handleGroup());
+          } else if (trigger.dataset.action === 'close') {
+            closeGroupResult();
+          }
+          return;
+        }
+        if (event.target === overlay) closeGroupResult();
+      });
+    }
+
+    function closeGroupResult(onDone) {
+      const el = document.getElementById('groupResultOverlay');
+      if (!el) { if (typeof onDone === 'function') onDone(); return; }
+      modalOpen = false;
+      if (typeof el._cleanup === 'function') el._cleanup();
+      updateLock();
+      el.classList.add('out');
+      setTimeout(() => {
+        el.remove();
+        renderGroupStage();
+        if (typeof onDone === 'function') onDone();
+      }, 240);
     }
 
     /* ================================================================
