@@ -829,7 +829,11 @@
     ================================================================ */
     function renderList() {
       const list = document.getElementById('entriesList');
-      list.innerHTML = '';
+      const notice = document.getElementById('notice');
+      /* Wipe only the entry rows; keep the notice sibling so it can sit
+         directly below the last row without causing a layout shift when the
+         list transitions between 1 and 2+ entries. */
+      list.querySelectorAll('.entry-row').forEach(row => row.remove());
 
       entries.forEach((entry, index) => {
         const row = document.createElement('div');
@@ -854,7 +858,8 @@
              aria-label="${esc(entry.title)} 的权重" />
       <button type="button" class="del-btn" data-action="delete" title="移除" aria-label="移除 ${esc(entry.title)}">✕</button>
     `;
-        list.appendChild(row);
+        if (notice) list.insertBefore(row, notice);
+        else list.appendChild(row);
       });
     }
 
