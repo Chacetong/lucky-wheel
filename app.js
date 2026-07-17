@@ -158,6 +158,20 @@
       return Math.max(2, Math.min(entries.length || 2, GROUP_MAX));
     }
 
+    /* Chip visual scale — fewer members inside a group card → bigger chips
+       filling the space; more members → smaller chips packed together. Applied
+       via --chip-scale CSS variable on the group container so preview slots,
+       animation cards, and result chips share the same rule. */
+    function chipScaleForCount(count) {
+      if (count <= 1) return 1.35;
+      if (count <= 2) return 1.2;
+      if (count <= 3) return 1.1;
+      if (count <= 4) return 1.0;
+      if (count <= 6) return 0.9;
+      if (count <= 8) return 0.8;
+      return 0.7;
+    }
+
     /* Compute the planned member count for each group given the current
        distribution mode. Same math as assignEntriesToGroups but returns
        counts only — used by the idle preview slots. */
@@ -1031,6 +1045,7 @@
         const slot = document.createElement('div');
         slot.className = 'group-slot';
         slot.dataset.index = i;
+        slot.style.setProperty('--chip-scale', chipScaleForCount(members.length));
         slot.innerHTML = `
           <div class="group-slot__header">Group ${String(i + 1).padStart(2, '0')}</div>
           <div class="group-slot__list">
@@ -1121,15 +1136,19 @@
        rebuilding the whole overlay. */
     function renderGroupResultGroupMarkup(groupIdx) {
       const members = currentGroupResult[groupIdx] || [];
+      const scale = chipScaleForCount(members.length);
       return `
-        <div class="group-result__group" data-index="${groupIdx}">
+        <div class="group-result__group" data-index="${groupIdx}" style="--chip-scale:${scale}">
           <div class="group-result__header">
             Group ${String(groupIdx + 1).padStart(2, '0')}
             <span class="group-result__count" data-count="${members.length}">人</span>
           </div>
           <ul class="group-result__list">
-            ${members.map(e => `
-              <li class="group-result__member" draggable="true" data-entry-id="${e.id}" style="background:${e.color}">${esc(e.title)}</li>
+            ${members.map((e, i) => `
+              <li class="group-result__member" draggable="true" data-entry-id="${e.id}" style="background:${e.color}">
+                <span class="group-result__index">${String(i + 1).padStart(2, '0')}</span>
+                <span class="group-result__name">${esc(e.title)}</span>
+              </li>
             `).join('')}
           </ul>
         </div>

@@ -364,15 +364,17 @@ body.mode-grouping .group-stage {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  overflow: hidden;
   background: var(--black);
   border: 2px solid var(--white);
   transform: skewX(-8deg);
 }
 
-/* Counter-skew direct children so text remains readable while the box
-   itself becomes a parallelogram matching the italic display type. */
-.group-slot > * {
+/* Counter-skew the top-of-card labels so headline text stays upright, but
+   let the chip list ride the parent's skew — chips will inherit it visually
+   so each wrapped row starts along the parallelogram's slanted left edge.
+   Individual chips get their own counter-skew below to keep names readable. */
+.group-slot > .group-slot__header,
+.group-slot > .group-slot__count {
   transform: skewX(8deg);
 }
 
@@ -397,7 +399,7 @@ body.mode-grouping .group-stage {
 
 .group-slot__count strong {
   color: var(--green);
-  font: 900 clamp(1.6rem, calc(100cqw / var(--group-cols, 2) * 0.16), 4.5rem)/1 var(--font-display);
+  font: italic 900 clamp(1.6rem, calc(100cqw / var(--group-cols, 2) * 0.16), 4.5rem)/1 var(--font-display);
   letter-spacing: -0.02em;
 }
 
@@ -408,27 +410,31 @@ body.mode-grouping .group-stage {
 }
 
 .group-slot__list {
+  flex: 1;
   display: flex;
   flex-wrap: wrap;
-  align-content: flex-start;
-  gap: 6px;
+  gap: calc((0.8cqw + 4px) * var(--chip-scale, 1));
+  align-content: center;
   min-height: 0;
-  overflow: hidden;
 }
 
 .group-card {
-  padding: 5px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc((1cqw + 5px) * var(--chip-scale, 1)) calc((1.6cqw + 9px) * var(--chip-scale, 1));
   color: var(--black);
-  font-size: 0.82rem;
-  font-weight: 800;
+  font: 900 calc((2cqw + 0.8rem) * var(--chip-scale, 1))/1 var(--font-display);
+  letter-spacing: -0.015em;
   white-space: nowrap;
+  transform: skewX(8deg);
   animation: cardFlash 220ms var(--ease-out) both;
 }
 
 @keyframes cardFlash {
-  0% { opacity: 0; transform: scale(0.86); }
-  55% { opacity: 1; transform: scale(1.06); }
-  100% { opacity: 1; transform: scale(1); }
+  0% { opacity: 0; transform: skewX(8deg) scale(0.86); }
+  55% { opacity: 1; transform: skewX(8deg) scale(1.06); }
+  100% { opacity: 1; transform: skewX(8deg) scale(1); }
 }
 
 .draw-controls {
@@ -1176,16 +1182,19 @@ body.mode-grouping .group-controls {
 }
 
 .group-result__group {
-  min-height: 0;
-  padding: clamp(14px, 1.4vw, 22px);
+  min-height: clamp(150px, 20vh, 240px);
+  padding: clamp(16px, 1.6vw, 24px);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: clamp(10px, 1vh, 16px);
   background: var(--black);
+  container-type: inline-size;
   transform: skewX(-8deg);
 }
 
-.group-result__group > * {
+/* Counter-skew only the header block; keep the list skewed with the card
+   so each wrapped row of chips starts along the slanted left edge. */
+.group-result__group > .group-result__header {
   transform: skewX(8deg);
 }
 
@@ -1216,27 +1225,44 @@ body.mode-grouping .group-controls {
   letter-spacing: -0.02em;
 }
 
+/* Member chips size to their own content and wrap naturally to the next
+   row. Vertically centered in the remaining card space so a small group
+   still fills the block visually. --chip-scale (member count) + cqw (card
+   width) drive sizing. */
 .group-result__list {
   list-style: none;
   padding: 0;
   margin: 0;
+  flex: 1;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: calc((0.8cqw + 4px) * var(--chip-scale, 1));
+  align-content: center;
 }
 
-/* Member chip — matches the animation-phase card treatment: entry's palette
-   color as background, black text. Keeps the lottery/grouping color language
-   consistent. */
 .group-result__member {
-  padding: 6px 12px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: calc(0.5em * var(--chip-scale, 1));
+  padding: calc((1cqw + 6px) * var(--chip-scale, 1)) calc((1.8cqw + 10px) * var(--chip-scale, 1));
   color: var(--black);
-  font-size: 0.95rem;
-  font-weight: 800;
   white-space: nowrap;
   cursor: grab;
   user-select: none;
+  transform: skewX(8deg);
   transition: opacity 160ms var(--ease-out);
+}
+
+.group-result__index {
+  color: color-mix(in srgb, var(--black) 55%, transparent);
+  font: 900 calc((1.2cqw + 0.6rem) * var(--chip-scale, 1))/1 var(--font-display);
+  letter-spacing: 0.03em;
+}
+
+.group-result__name {
+  color: var(--black);
+  font: 900 calc((2.2cqw + 0.9rem) * var(--chip-scale, 1))/1 var(--font-display);
+  letter-spacing: -0.01em;
 }
 
 .group-result__member:active {
