@@ -30,15 +30,18 @@
 
 ## 本地运行
 
-最简单的方式是直接用浏览器打开 `index.html`。如果需要更稳定地测试字体、缓存或浏览器行为，可以在项目目录启动静态服务器：
+代码采用 ES Modules 组织，浏览器的 CORS 策略禁止 `file://` 加载子模块，所以**不能双击 `index.html`**，必须走 http。
+
+**方式一（推荐）**：项目根跑
 
 ```bash
-python3 -m http.server 8000
+./serve.sh          # 默认端口 5173，自动开浏览器
+./serve.sh 8000     # 自选端口
 ```
 
-然后访问 `http://localhost:8000`。
+**方式二**：VS Code 装 Live Server 扩展，在 `index.html` 上右键 "Open with Live Server"，保存自动刷新。
 
-项目没有安装或构建步骤。
+项目没有安装或构建步骤，只依赖系统自带的 `python3`。
 
 ## 代码分层
 
