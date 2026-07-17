@@ -18,7 +18,12 @@
 .
 ├── index.html       # 页面语义结构
 ├── styles.css       # 布局、主题、组件和动画样式
-├── app.js           # 状态、名单、Canvas 和抽奖逻辑
+├── js/              # ES Modules
+│   ├── state.js     # 共享状态 / 调色板 / 持久化 / 色彩工具
+│   ├── ui.js        # esc / toast / tooltip / syncUI / renderList
+│   ├── wheel.js     # Canvas 绘制 + 抽奖 + 结果 modal
+│   ├── grouping.js  # 分组算法 + 动画 + 结果 modal + 拖拽
+│   └── main.js      # 阵容管理 + 模式切换 + 启动引导
 ├── DESIGN.md        # 产品与视觉设计规范
 └── README.md
 ```
@@ -37,13 +42,13 @@ python3 -m http.server 8000
 
 ## 代码分层
 
-`index.html` 只负责页面结构；`styles.css` 负责视觉表现；`app.js` 负责以下模块：
+`index.html` 只负责页面结构；`styles.css` 负责视觉表现；`js/` 下按职责拆分为 ES Modules：
 
-1. 状态与本地存储
-2. Canvas 尺寸和转盘绘制
-3. 参与者名单管理
-4. 抽奖动画与命中计算
-5. 结果弹窗和按钮特效
+1. `state.js` —— 共享可变状态（`state` 对象）、调色板、`localStorage` 持久化、色彩工具
+2. `ui.js` —— DOM 通用工具：`esc`、Toast、Tooltip、`syncUI`/`renderList`
+3. `wheel.js` —— Canvas 尺寸与转盘绘制、抽奖动画、命中计算、抽奖结果 modal
+4. `grouping.js` —— 分组算法、chaos 动画、结果 modal、拖拽换组
+5. `main.js` —— 阵容 CRUD、模式切换、快捷键、启动引导
 
 抽奖结果由转盘停止后的指针角度决定。每个扇区占比为 `参与者权重 / 总权重`。
 

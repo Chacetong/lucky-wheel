@@ -53,7 +53,7 @@
         <div class="group-stage" id="groupStage" aria-hidden="true"></div>
 
         <div class="draw-controls">
-          <button class="spin-btn" id="spinBtn" onclick="handleSpin()">
+          <button class="spin-btn" id="spinBtn" type="button">
             <span class="spin-btn__text">见证奇迹</span>
             <span class="spin-btn__arrow-stage" aria-hidden="true">
               <svg class="spin-btn__arrow spin-btn__arrow--current" width="96" height="48" viewBox="0 0 96 48"
@@ -131,18 +131,18 @@
         <div id="toastRoot"></div>
 
         <footer class="roster__actions">
-          <button class="add-btn" id="addBtn" onclick="addEntry()">
+          <button class="add-btn" id="addBtn" type="button">
             <span aria-hidden="true">＋</span> 添加选手
           </button>
-          <button class="preset-btn" onclick="loadPresetRoster()" title="载入 ACDC 预设阵容">ACDC</button>
-          <button class="clear-btn" onclick="clearAll()" title="清空全部">清空</button>
+          <button class="preset-btn" type="button" title="载入 ACDC 预设阵容">ACDC</button>
+          <button class="clear-btn" type="button" title="清空全部">清空</button>
         </footer>
       </aside>
     </main>
   </div>
 
   <div id="globalToastRoot"></div>
-  <script src="app.js"></script>
+  <script type="module" src="js/main.js"></script>
 </body>
 
 </html>
