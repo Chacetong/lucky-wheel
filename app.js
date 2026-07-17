@@ -708,9 +708,17 @@
       }
       const id = nextId++;
       const title = defaultTitle || `Player ${id}`;
-      const lastColor = entries.length > 0 ? entries[entries.length - 1].color : null;
-      const firstColor = entries.length > 0 ? entries[0].color : null;
-      const color = getNextDistinctColor(lastColor, [lastColor, firstColor]);
+      let color;
+      if (entries.length === 0) {
+        /* Randomize the very first entry so a fresh roster doesn't always
+           start on the same palette color. Subsequent adds cascade naturally
+           from this random seed via getNextDistinctColor. */
+        color = PALETTE[Math.floor(Math.random() * PALETTE.length)];
+      } else {
+        const lastColor = entries[entries.length - 1].color;
+        const firstColor = entries[0].color;
+        color = getNextDistinctColor(lastColor, [lastColor, firstColor]);
+      }
       entries.push({ id, title, weight: 1, color });
       renderList();
       redraw();
@@ -743,10 +751,14 @@
     function loadPresetRoster() {
       entries = [];
       nextId = 1;
-      let previousColor = null;
+      /* Seed with a random palette entry so each load reshuffles the color
+         run instead of always starting on PALETTE[0]. */
+      let previousColor = PALETTE[Math.floor(Math.random() * PALETTE.length)];
 
-      ACDC_ROSTER.forEach(title => {
-        const color = getNextDistinctColor(previousColor, [previousColor]);
+      ACDC_ROSTER.forEach((title, idx) => {
+        const color = idx === 0
+          ? previousColor
+          : getNextDistinctColor(previousColor, [previousColor]);
         entries.push({ id: nextId++, title, weight: 1, color });
         previousColor = color;
       });
