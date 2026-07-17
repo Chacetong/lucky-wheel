@@ -243,7 +243,8 @@ body.mode-grouping .hero-copy__layer[data-mode="grouping"] {
 }
 
 .mode-tab {
-  padding: 6px 14px;
+  min-height: 36px;
+  padding: 10px 16px;
   background: transparent;
   color: var(--gray);
   font: 800 0.74rem/1 var(--font-ui);
@@ -1658,6 +1659,12 @@ body.mode-grouping .entry-row {
   .app {
     padding-inline: 14px;
     padding-bottom: 14px;
+  }
+
+  /* 触屏下把 mode-tab 拉到 WCAG 建议的 44px 触控目标。 */
+  .mode-tab {
+    min-height: 44px;
+    padding: 12px 18px;
   }
 
   .draw-stage {
