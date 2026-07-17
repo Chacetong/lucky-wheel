@@ -1371,6 +1371,17 @@
     }
 
     function easeSpin(t) {
+      /* Anticipation dip — the wheel pulls back briefly before launching
+         forward, adding the showman's beat before the acceleration. */
+      const ANTICIPATION_RATIO = 0.05;
+      const ANTICIPATION_DIP = -0.006;
+
+      if (t < ANTICIPATION_RATIO) {
+        const p = t / ANTICIPATION_RATIO;
+        return ANTICIPATION_DIP * (1 - Math.pow(1 - p, 2));
+      }
+
+      const mainT = (t - ANTICIPATION_RATIO) / (1 - ANTICIPATION_RATIO);
       const accelerationRatio = 0.16;
       const decelerationPower = 1.75;
       const decelerationDuration = 1 - accelerationRatio;
@@ -1379,17 +1390,19 @@
         + decelerationDuration / (decelerationPower + 1)
       );
 
-      if (t < accelerationRatio) {
-        return peakVelocity * t * t / (2 * accelerationRatio);
+      let progress;
+      if (mainT < accelerationRatio) {
+        progress = peakVelocity * mainT * mainT / (2 * accelerationRatio);
+      } else {
+        const decelerationProgress = (mainT - accelerationRatio) / decelerationDuration;
+        const accelerationDistance = peakVelocity * accelerationRatio / 2;
+        const decelerationDistance = peakVelocity * decelerationDuration
+          * (1 - Math.pow(1 - decelerationProgress, decelerationPower + 1))
+          / (decelerationPower + 1);
+        progress = accelerationDistance + decelerationDistance;
       }
 
-      const decelerationProgress = (t - accelerationRatio) / decelerationDuration;
-      const accelerationDistance = peakVelocity * accelerationRatio / 2;
-      const decelerationDistance = peakVelocity * decelerationDuration
-        * (1 - Math.pow(1 - decelerationProgress, decelerationPower + 1))
-        / (decelerationPower + 1);
-
-      return accelerationDistance + decelerationDistance;
+      return ANTICIPATION_DIP + (1 - ANTICIPATION_DIP) * progress;
     }
 
     /* ================================================================
