@@ -1,5 +1,5 @@
     /* ================================================================
-       Constants & Palette
+       常量与调色板
     ================================================================ */
     const MAX_ENTRIES = 1000;
 
@@ -16,8 +16,8 @@
       '杨阳', '雷咏梅', '邓小璐', '黄健', '张恒',
     ];
 
-    /* Result-page speed-line controls. These values stay mutable so they can
-       also be tuned live from DevTools through window.RESULT_FX_CONFIG. */
+    /* 结果页速度线特效参数。挂到 window.RESULT_FX_CONFIG 上便于 DevTools
+       实时调参。 */
     const RESULT_FX_CONFIG = {
       linesPerSecond: 40,
       lineLength: { min: 50, max: 200 },
@@ -53,7 +53,7 @@
         }
       });
 
-      /* The wheel is circular, so the final and first segments also touch. */
+      /* 转盘是环形的，首尾扇区也相邻，需要额外去重一次。 */
       if (entries.length > 1) {
         const firstColor = entries[0].color;
         const lastIndex = entries.length - 1;
@@ -68,7 +68,7 @@
     }
 
     /* ================================================================
-       State
+       状态
     ================================================================ */
     let entries = [];        // { id, title, weight, color }
     let nextId = 1;
@@ -77,23 +77,22 @@
     let distMode = 'even';   // 'even' | 'fill'
     let spinning = false;
     let grouping = false;
-    let currentGroupResult = null; // Array of Array<entry> — set after grouping completes
+    let currentGroupResult = null; // Array of Array<entry>，分组完成后保存最终名单
     let groupAnimTimers = { chaos: null, settle: null };
     let modalOpen = false;
-    let rotation = 0;         // current canvas rotation (radians)
+    let rotation = 0;         // 当前 canvas 旋转角度（弧度）
     let rafId = null;
     let redrawRafId = null;
     let saveTimerId = null;
 
-    /* Cancel-spin bookkeeping. preSpinRotation captures the resting angle
-       right before a spin starts, so Escape can snap the wheel back cleanly.
-       restoreWinnerOnCancel is the modal winner to reopen when the current
-       spin was triggered from the result modal's "再来一次" button. */
+    /* 取消抽奖用的状态：preSpinRotation 记录抽奖开始前的静止角度，ESC 时可
+       以顺滑回位；restoreWinnerOnCancel 保存上一轮结果 modal 的胜者，用于
+       从「再来一次」触发的抽奖被取消时把结算页复原。 */
     let preSpinRotation = 0;
     let restoreWinnerOnCancel = null;
     let currentModalWinner = null;
 
-    /* Cached CSS variables — avoid getComputedStyle in render hot path */
+    /* 缓存 CSS 变量，避免每帧 getComputedStyle 的性能开销。 */
     const CSS_VARS = {};
     function readCssVars() {
       const s = getComputedStyle(document.documentElement);
@@ -102,7 +101,7 @@
       });
     }
 
-    /* Reduced motion preference */
+    /* 是否偏好减少动画（prefers-reduced-motion）。 */
     const prefersReducedMotion = () =>
       matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -135,12 +134,12 @@
     }
 
     /* ================================================================
-       Grouping preview
+       分组预览
     ================================================================ */
     const GROUP_MAX = 20;
 
-    /* Layout table tuned to keep small counts feeling intentional; falls back
-       to a near-square grid for larger counts. */
+    /* 小组数手工调好的行列布局，让 2/3/6 这种常见值感觉自然；其余组数回退
+       到近似正方形的 ceil(sqrt) 计算。 */
     const GROUP_GRID_LAYOUTS = {
       1: [1, 1], 2: [2, 1], 3: [3, 1], 4: [2, 2],
       5: [3, 2], 6: [3, 2], 7: [4, 2], 8: [4, 2],
@@ -158,10 +157,9 @@
       return Math.max(2, Math.min(entries.length || 2, GROUP_MAX));
     }
 
-    /* Chip visual scale — fewer members inside a group card → bigger chips
-       filling the space; more members → smaller chips packed together. Applied
-       via --chip-scale CSS variable on the group container so preview slots,
-       animation cards, and result chips share the same rule. */
+    /* 芯片视觉缩放系数 —— 组内人数少时芯片放大填满卡片，人数多时紧凑排布。
+       通过设在组容器上的 --chip-scale CSS 变量下发，预览槽、动画卡片、结果
+       页芯片共用同一套规则。 */
     function chipScaleForCount(count) {
       if (count <= 1) return 1.35;
       if (count <= 2) return 1.2;
@@ -172,9 +170,8 @@
       return 0.7;
     }
 
-    /* Compute the planned member count for each group given the current
-       distribution mode. Same math as assignEntriesToGroups but returns
-       counts only — used by the idle preview slots. */
+    /* 依据当前分配模式，计算每组的计划人数。跟 assignEntriesToGroups 用同
+       样的分配算法，但只返回人数数组，供空闲状态的预览槽使用。 */
     function groupSizes(n, k, mode) {
       const sizes = new Array(k).fill(0);
       if (n <= 0 || k <= 0) return sizes;
@@ -216,8 +213,7 @@
       }
     }
 
-    /* Reconcile group-count input constraints when the entry list changes
-       and re-render the preview. Safe to call in any mode. */
+    /* 阵容变化时校正组数输入的上下限并重绘预览。任何模式下都可调用。 */
     function syncGroupStage() {
       const input = document.getElementById('groupCount');
       const cap = groupCapForEntries();
@@ -279,7 +275,7 @@
       runGroupingAnimation(assignment);
     }
 
-    /* Fisher–Yates copy; caller keeps their original array intact. */
+    /* Fisher–Yates 洗牌返回副本，调用方原数组保持不变。 */
     function shuffledEntries(list) {
       const arr = list.slice();
       for (let i = arr.length - 1; i > 0; i--) {
@@ -289,10 +285,9 @@
       return arr;
     }
 
-    /* Returns an array of k sub-arrays according to the distribution mode.
-       'even'  → sizes differ by at most 1 (13/4 → 4,3,3,3)
-       'fill'  → first k−1 groups take ceil(n/k), last group takes remainder
-                 (13/4 → 4,4,4,1) */
+    /* 按分配模式返回长度为 k 的分组结果数组。
+       'even'  → 各组人数差 ≤ 1（13/4 → 4,3,3,3）
+       'fill'  → 前 k−1 组按 ceil(n/k) 装满，末组吃剩（13/4 → 4,4,4,1） */
     function assignEntriesToGroups(list, k, mode) {
       const shuffled = shuffledEntries(list);
       const n = shuffled.length;
@@ -345,11 +340,10 @@
           groupCount,
           distMode,
         }));
-      } catch (_) { /* quota / privacy mode — ignore */ }
+      } catch (_) { /* 配额 / 隐私模式下失败，直接忽略 */ }
     }
 
-    /* Coalesce rapid input events so typing does not redraw the wheel or write
-       localStorage more than once per frame / short idle window. */
+    /* 用 rAF 合并高频输入事件，避免打字时每次按键都触发重绘或写盘。 */
     function scheduleRedraw() {
       if (redrawRafId !== null) return;
       redrawRafId = requestAnimationFrame(() => {
@@ -395,7 +389,7 @@
     }
 
     /* ================================================================
-       Boot
+       启动引导
     ================================================================ */
     document.addEventListener('DOMContentLoaded', () => {
       readCssVars();
@@ -436,23 +430,23 @@
       syncGroupStage();
       setMode(currentMode);
 
-      /* is-preload globally short-circuits transitions/animations while the
-         initial mode state paints. Drop it once the first frame is committed
-         and swap in is-entering so entry-only transitions (longer, staggered)
-         take over. Base transitions resume for mode switching afterward. */
+      /* is-preload 类会在首帧把所有 transition/animation 短路，让初始模式
+         状态一次性呈现而不产生跨态过渡。首帧提交后移除 is-preload，同时挂
+         上 is-entering 让"入场专用"的更长、错落的过渡接管；1.8s 后清理，
+         之后切换模式再回到基础 transition 时长。 */
       requestAnimationFrame(() => {
         document.body.classList.remove('is-preload');
         document.body.classList.add('is-entering');
         setTimeout(() => document.body.classList.remove('is-entering'), 1800);
       });
 
-      /* Persist remove-toggle changes */
+      /* 「胜出后移除」开关变化时持久化。 */
       const toggle = document.getElementById('removeToggle');
       if (toggle) toggle.addEventListener('change', saveState);
 
-      /* Global keyboard shortcuts:
-         - Escape cancels an active spin and restores the pre-spin state
-         - Space / Enter triggers a spin (when not typing / not busy) */
+      /* 全局快捷键：
+         - Escape：抽奖 / 分组进行中时取消当前动作
+         - Space / Enter：非输入态、非忙时启动抽奖或分组 */
       document.addEventListener('keydown', (e) => {
         if (spinning && e.key === 'Escape') {
           e.preventDefault();
@@ -479,10 +473,9 @@
       startSpinBtnAttentionLoop();
     });
 
-    /* Replay the CTA arrow slide every 5s so idle users notice the button.
-       Only the outward motion is visible: after the slide, we suppress the
-       return transition by forcing a synchronous style commit with
-       .attention-reset before restoring the normal transition rules. */
+    /* 每 5s 重放一次「见证奇迹」按钮的箭头滑动，让闲置用户注意到按钮。
+       只播放向右滑出，不让回位动画可见：滑出后加 .attention-reset 用
+       transition: none 同步提交重置状态，再恢复正常 transition 规则。 */
     function startSpinBtnAttentionLoop() {
       const btn = document.getElementById('spinBtn');
       if (!btn) return;
@@ -493,9 +486,9 @@
         setTimeout(() => {
           btn.classList.add('attention-reset');
           btn.classList.remove('attention');
-          /* Force sync layout so the transition:none + reset transforms are
-             committed in this task; removing .attention-reset next won't
-             retrigger a transition because the values are already at rest. */
+          /* 强制同步 layout 让 transition:none + 重置 transform 在当前任务
+             内落地；紧接着移除 .attention-reset 时不会再触发过渡，因为值
+             已经是静止态。 */
           void btn.offsetWidth;
           btn.classList.remove('attention-reset');
         }, 320);
@@ -503,15 +496,14 @@
     }
 
     /* ================================================================
-       Canvas helpers
+       Canvas 工具
     ================================================================ */
     function getCanvas() { return document.getElementById('wheelCanvas'); }
     function getCtx() { return getCanvas().getContext('2d'); }
 
     function resizeCanvas() {
       const canvas = getCanvas();
-      /* 2× is visually crisp while avoiding excessive canvas memory and paint
-         cost on 3×/4× mobile displays. */
+      /* 2× 已经够清晰，同时避免 3×/4× 移动屏上的 canvas 内存和绘制开销。 */
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const wrap = canvas.closest('.wheel-wrap');
       const bounds = wrap ? wrap.getBoundingClientRect() : null;
@@ -528,7 +520,7 @@
     }
 
     /* ================================================================
-       Draw wheel
+       绘制转盘
     ================================================================ */
     function redraw(rot) {
       if (rot !== undefined) rotation = rot;
@@ -545,7 +537,7 @@
 
       ctx.clearRect(0, 0, W, H);
 
-      /* ── empty state ─────────────────────────── */
+      /* ── 空状态 ─────────────────────────── */
       if (entries.length === 0) {
         ctx.beginPath();
         ctx.arc(cx, cy, R, 0, Math.PI * 2);
@@ -560,28 +552,28 @@
         return;
       }
 
-      /* ── one-entry full circle ───────────────── */
+      /* ── 单人满圆 ───────────────── */
       if (entries.length === 1) {
         ctx.beginPath();
         ctx.arc(cx, cy, R, 0, Math.PI * 2);
         ctx.fillStyle = entries[0].color;
         ctx.fill();
         drawOuterRing(ctx, cx, cy, R, W);
-        /* hide name when only 1 participant */
+        /* 只有 1 人时不画名字 */
         drawHub(ctx, cx, cy, R);
         return;
       }
 
-      /* ── segments ────────────────────────────── */
+      /* ── 扇区 ────────────────────────────── */
       const total = totalWeight();
-      let angle = rot - Math.PI / 2;   // 0° at 12-o-clock
+      let angle = rot - Math.PI / 2;   // 0° 定在 12 点方向
 
       entries.forEach((entry) => {
         const slice = (entry.weight / total) * Math.PI * 2;
         const end = angle + slice;
         const color = entry.color;
 
-        /* fill */
+        /* 填充 */
         ctx.beginPath();
         ctx.moveTo(cx, cy);
         ctx.arc(cx, cy, R, angle, end);
@@ -589,7 +581,7 @@
         ctx.fillStyle = color;
         ctx.fill();
 
-        /* label */
+        /* 标签 */
         drawSegmentLabel(ctx, entry.title, angle, slice, cx, cy, R);
 
         angle = end;
@@ -609,8 +601,7 @@
     }
 
     function drawHub(ctx, cx, cy, R) {
-      /* Compact pointer: about 60% of the previous scale. The triangle edges
-         terminate at the exact tangent points of the circular hub. */
+      /* 紧凑指针：三角形边正好切在圆形轮毂的切点，视觉上无空隙。 */
       const hubR = Math.max(11, Math.min(20, R * 0.072));
       const needleLen = (R - hubR) * 0.18;
       const tipDistance = hubR + needleLen;
@@ -618,7 +609,7 @@
       const tangentY = cy - (hubR * hubR) / tipDistance;
       const tangentX = hubR * Math.sqrt(tipDistance * tipDistance - hubR * hubR) / tipDistance;
 
-      /* ── needle ────────────────────────────── */
+      /* ── 指针三角 ────────────────────────────── */
       ctx.beginPath();
       ctx.moveTo(cx - tangentX, tangentY);
       ctx.lineTo(cx, needleTip);
@@ -627,7 +618,7 @@
       ctx.fillStyle = CSS_VARS['--white'];
       ctx.fill();
 
-      /* ── simple solid hub ──────────────────── */
+      /* ── 中心实心轮毂 ──────────────────── */
       ctx.beginPath();
       ctx.arc(cx, cy, hubR, 0, Math.PI * 2);
       ctx.fillStyle = CSS_VARS['--white'];
@@ -635,7 +626,7 @@
     }
 
     /* ================================================================
-       Segment label — max 2 lines
+       扇区标签 —— 最多两行
     ================================================================ */
     function drawSegmentLabel(ctx, title, angle, slice, cx, cy, R) {
       if (slice < 0.1) return;
@@ -683,7 +674,7 @@
       ctx.restore();
     }
 
-    // Try to fit in 1 line, then 2 lines. Returns array or null.
+    // 先尝试单行装下，再尝试拆两行。返回文本数组或 null。
     function labelTryFit(ctx, text, availW) {
       if (ctx.measureText(text).width <= availW) return [text];
 
@@ -713,7 +704,7 @@
     }
 
     /* ================================================================
-       Entry management
+       选手条目管理
     ================================================================ */
     function addEntry(defaultTitle) {
       if (entries.length >= MAX_ENTRIES) {
@@ -724,9 +715,8 @@
       const title = defaultTitle || `Player ${id}`;
       let color;
       if (entries.length === 0) {
-        /* Randomize the very first entry so a fresh roster doesn't always
-           start on the same palette color. Subsequent adds cascade naturally
-           from this random seed via getNextDistinctColor. */
+        /* 首位选手随机取 PALETTE 一个色，避免每次新建阵容都以同一色开头。
+           后续新增沿用 getNextDistinctColor 从这个随机种子往下推。 */
         color = PALETTE[Math.floor(Math.random() * PALETTE.length)];
       } else {
         const lastColor = entries[entries.length - 1].color;
@@ -765,8 +755,7 @@
     function loadPresetRoster() {
       entries = [];
       nextId = 1;
-      /* Seed with a random palette entry so each load reshuffles the color
-         run instead of always starting on PALETTE[0]. */
+      /* 用一个随机 palette 色作为种子，每次载入 ACDC 都会得到不同的配色序列。 */
       let previousColor = PALETTE[Math.floor(Math.random() * PALETTE.length)];
 
       ACDC_ROSTER.forEach((title, idx) => {
@@ -796,7 +785,7 @@
         ? entries[(entryIndex + 1) % entries.length].color
         : null;
       e.color = getNextDistinctColor(e.color, [previousColor, nextColor]);
-      /* Update only the affected dot to preserve focus & avoid DOM churn */
+      /* 只更新当前色块，保持输入焦点，避免整行 DOM 重建。 */
       const dot = document.querySelector(`.entry-row[data-id="${id}"] .entry-dot`);
       if (dot) dot.style.background = e.color;
       redraw();
@@ -811,9 +800,8 @@
       scheduleSave();
     }
 
-    /* Live update during typing — accept any valid positive number, but don't
-       force-clamp (that would break the user's input flow). Final clamp happens
-       on blur via commitWeight. */
+    /* 打字过程中实时更新 —— 接受任意有效的正数，但不强制夹范围（会干扰
+       输入流程）。最终的夹取在 blur 时由 commitWeight 完成。 */
     function updateWeight(id, val) {
       const e = entries.find(e => e.id === id);
       if (!e) return;
@@ -839,14 +827,13 @@
     }
 
     /* ================================================================
-       Render list DOM
+       渲染选手列表 DOM
     ================================================================ */
     function renderList() {
       const list = document.getElementById('entriesList');
       const notice = document.getElementById('notice');
-      /* Wipe only the entry rows; keep the notice sibling so it can sit
-         directly below the last row without causing a layout shift when the
-         list transitions between 1 and 2+ entries. */
+      /* 只清理 .entry-row，保留 notice 兄弟节点，让「至少 2 位」提示直接
+         挂在最后一条选手之下；1 位 ↔ 2 位切换时也不再触发上方条目跳位。 */
       list.querySelectorAll('.entry-row').forEach(row => row.remove());
 
       entries.forEach((entry, index) => {
@@ -877,8 +864,7 @@
       });
     }
 
-    /* Delegated handlers for the entries list. Attached once at boot so
-       dynamically rendered rows do not need per-row event wiring. */
+    /* 阵容列表的事件委托。启动时挂一次，动态生成的行不需要单独绑事件。 */
     function bindEntriesListDelegation(list) {
       const rowId = (target) => {
         const row = target.closest('.entry-row');
@@ -911,7 +897,7 @@
     }
 
     /* ================================================================
-       Sync UI state (button, notice, stats)
+       同步 UI 状态（按钮、提示、统计）
     ================================================================ */
     function syncUI() {
       syncStats();
@@ -947,7 +933,7 @@
     }
 
     /* ================================================================
-       Grouping animation
+       分组动画
     ================================================================ */
     function runGroupingAnimation(finalGroups) {
       grouping = true;
@@ -957,7 +943,7 @@
       if (!stage) return;
       renderGroupStage();
 
-      /* Move the stage to viewport center (mirrors the spin transform). */
+      /* 把 stage 平移到视口中心，与抽奖旋转时转盘的居中处理一致。 */
       const rect = stage.getBoundingClientRect();
       const shiftX = window.innerWidth / 2 - (rect.left + rect.width / 2);
       const shiftY = window.innerHeight / 2 - (rect.top + rect.height / 2);
@@ -994,9 +980,8 @@
       chaosStep(0);
     }
 
-    /* Abort the grouping animation and slide the stage back to its resting
-       position. Mirrors cancelSpin's flow and reuses .canceling to keep the
-       stage above the roster during the 520ms return. */
+    /* 中止分组动画，让 stage 滑回原位。流程与 cancelSpin 对齐，也复用
+       .canceling 类保证 520ms 回位期间 stage 一直盖在阵容之上。 */
     function cancelGrouping() {
       if (!grouping) return;
       if (groupAnimTimers.chaos !== null) {
@@ -1019,8 +1004,8 @@
       }, 520);
     }
 
-    /* Produce a size-matching but randomly-populated shuffle for the chaos
-       phase, so each slot flashes plausible-looking names of the right count. */
+    /* chaos 阶段用，返回一份和最终分组人数一致但内容随机的洗牌，让每格
+       都闪出「看起来对但顺序还没定」的名字。 */
     function sampleRandomGroups(finalGroups) {
       const shuffled = shuffledEntries(entries);
       let idx = 0;
@@ -1064,7 +1049,7 @@
     }
 
     /* ================================================================
-       Group result modal (fullscreen takeover)
+       分组结果全屏 modal
     ================================================================ */
     function showGroupResult(groups) {
       if (!groups) return;
@@ -1131,9 +1116,8 @@
       });
     }
 
-    /* Small helpers for the group result markup + drag-and-drop. Split out
-       so the group card can be re-rendered in place after a drop without
-       rebuilding the whole overlay. */
+    /* 结果页分组卡片 + 拖拽的小工具。拆成独立函数，拖拽结束后只重绘受影响
+       的两个组，不用整个 overlay 重建。 */
     function renderGroupResultGroupMarkup(groupIdx) {
       const members = currentGroupResult[groupIdx] || [];
       const scale = chipScaleForCount(members.length);
@@ -1161,8 +1145,7 @@
       el.outerHTML = renderGroupResultGroupMarkup(groupIdx);
     }
 
-    /* Wire drag-and-drop for reassigning members between groups. Uses event
-       delegation on the overlay so re-rendered groups still work. */
+    /* 结果页组间成员拖拽换组，事件委托挂在 overlay 上，重渲染的组不用重新绑定。 */
     function bindGroupResultDragDrop(overlay) {
       let dragMemberId = null;
       let dragSourceIdx = null;
@@ -1173,7 +1156,7 @@
         dragMemberId = Number(member.dataset.entryId);
         dragSourceIdx = Number(member.closest('.group-result__group').dataset.index);
         event.dataTransfer.effectAllowed = 'move';
-        /* Firefox requires some payload to enable dragging. */
+        /* Firefox 需要设置 dataTransfer payload 才能真正开始拖拽。 */
         event.dataTransfer.setData('text/plain', String(dragMemberId));
         member.classList.add('is-dragging');
       });
@@ -1243,7 +1226,7 @@
     }
 
     /* ================================================================
-       Spin
+       抽奖旋转
     ================================================================ */
     function handleSpin(restoreWinner = null) {
       if (entries.length < 2) {
@@ -1265,7 +1248,7 @@
         wheel.style.setProperty('--spin-shift-x', `${shiftX.toFixed(1)}px`);
         wheel.style.setProperty('--spin-shift-y', `${shiftY.toFixed(1)}px`);
 
-        /* Fill the viewport with a safe margin on all sides. */
+        /* 让转盘尽量填满视口，四周留出安全边距。 */
         const viewportShort = Math.min(window.innerWidth, window.innerHeight);
         const safeMargin = Math.max(24, viewportShort * 0.04);
         const availableSize = viewportShort - safeMargin * 2;
@@ -1275,8 +1258,7 @@
       document.body.classList.add('spinning');
       syncUI();
 
-      /* Honor reduced-motion: shorter, gentler spin while still resolving
-         to a random outcome */
+      /* 尊重 reduced-motion 偏好：缩短时长、降低圈数，但仍随机产生一个胜者。 */
       const reduceMotion = prefersReducedMotion();
       const fullSpins = reduceMotion
         ? (1 + Math.random()) * Math.PI * 2
@@ -1289,8 +1271,8 @@
 
       function tick(now) {
         const t = Math.min((now - t0) / duration, 1);
-        /* Update global rotation each frame so external readers (resize,
-           cancelSpin) always see the current visual angle. */
+        /* 每帧同步全局 rotation，让 resize / cancelSpin 等外部读者拿到当前
+           实际的视觉角度。 */
         rotation = from + fullSpins * easeSpin(t);
         drawWheel(rotation);
 
@@ -1301,7 +1283,7 @@
           document.body.classList.remove('spinning');
           syncUI();
 
-          /* Determine winner from final pointer position */
+          /* 根据指针最终停在的角度反推胜者。 */
           showResult(getWinnerAtPointer(rotation));
         }
       }
@@ -1309,11 +1291,9 @@
       rafId = requestAnimationFrame(tick);
     }
 
-    /* Abort the current spin animation and restore the pre-spin state. The
-       wheel eases clockwise back to its resting angle (<= 360°) so the
-       transition mirrors the wheel-wrap scale-back timing. `.canceling`
-       keeps the draw-stage above the roster during the return so the
-       shrinking wheel is never clipped or occluded. */
+    /* 中止当前抽奖并回到抽奖前状态。转盘沿顺时针方向平滑归位（≤ 360°），
+       缓动时长与 wheel-wrap 缩放回位一致；`.canceling` 类保证 520ms 回位期
+       间 draw-stage 一直盖在阵容之上，缩小的转盘不会被裁切或遮挡。 */
     function cancelSpin() {
       if (!spinning) return;
       if (rafId !== null) {
@@ -1355,12 +1335,12 @@
       rafId = requestAnimationFrame(tick);
     }
 
-    /* Determine which segment the pointer (12-o-clock) lands on */
+    /* 判断指针（12 点方向）落在哪个扇区。 */
     function getWinnerAtPointer(rot) {
       const total = totalWeight();
-      /* Pointer is at 12-o-clock; wheel is rotated by rot from its initial position.
-         In drawWheel, angle starts at rot - PI/2, so the pointer points at
-         the angle = -rot (mod 2PI) within the unrotated segment layout. */
+      /* 指针固定在 12 点方向；转盘从初始位置旋转了 rot。drawWheel 里 angle
+         起点是 rot - π/2，因此指针在未旋转扇区布局中的对应角度就是
+         -rot（对 2π 取正模）。 */
       const pointerAngle = ((-rot % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
       let cum = 0;
       for (let i = 0; i < entries.length; i++) {
@@ -1371,8 +1351,7 @@
     }
 
     function easeSpin(t) {
-      /* Anticipation dip — the wheel pulls back briefly before launching
-         forward, adding the showman's beat before the acceleration. */
+      /* Anticipation 前奏 —— 转盘先反向拉回一点再爆发向前，制造出手感张力。 */
       const ANTICIPATION_RATIO = 0.05;
       const ANTICIPATION_DIP = -0.006;
 
@@ -1406,7 +1385,7 @@
     }
 
     /* ================================================================
-       Result modal
+       抽奖结果 modal
     ================================================================ */
     function showResult(winner) {
       closeModal();
@@ -1462,8 +1441,8 @@
       const primaryBtn = overlay.querySelector('.btn--primary');
       if (primaryBtn) primaryBtn.focus();
 
-      /* Esc / Tab focus trap — bound to document so it works regardless of
-         whether focus is currently inside the overlay */
+      /* Esc / Tab 焦点陷阱 —— 挂在 document 上，无论焦点当前是否在 overlay
+         内都能拦到；实现 Tab 循环 + Escape 关闭。 */
       const onKey = (e) => {
         if (e.key === 'Escape') {
           e.preventDefault();
@@ -1495,7 +1474,7 @@
         if (event.target === overlay) closeModal();
       });
 
-      /* Defer removal until modal is closed */
+      /* 中奖者的移除延迟到 modal 关闭时执行。 */
       pendingRemoveId = removeMode ? winner.id : null;
     }
 
@@ -1534,7 +1513,7 @@
     }
 
     /* ================================================================
-       Tooltip (portaled to body to escape ancestor overflow clipping)
+       Tooltip（挂在 body 上，逃出祖先容器的 overflow 裁切）
     ================================================================ */
     function bindTooltipDelegation() {
       const tooltip = document.createElement('div');
@@ -1549,7 +1528,7 @@
         tooltip.textContent = text;
         tooltip.setAttribute('aria-hidden', 'false');
         tooltip.classList.add('is-visible');
-        /* Measure after content set so width is accurate, then clamp inside vp. */
+        /* 先写入文本再测量宽度，最后夹到视口内。 */
         const rect = target.getBoundingClientRect();
         const tRect = tooltip.getBoundingClientRect();
         const gap = 10;
@@ -1586,9 +1565,8 @@
     /* ================================================================
        Toast
     ================================================================ */
-    /* Toasts default to the roster panel (for entry-related feedback).
-       Pass { global: true } for抽奖 flow feedback that should surface at
-       the viewport's center. */
+    /* Toast 默认挂在阵容面板底部（用于选手操作反馈）。传 { global: true }
+       让抽奖/分组流程等全局反馈出现在视口中央下方。 */
     function showToast(msg, { global = false } = {}) {
       const root = document.getElementById(global ? 'globalToastRoot' : 'toastRoot');
       if (!root) return;
@@ -1603,7 +1581,7 @@
     }
 
     /* ================================================================
-       Utility
+       工具函数
     ================================================================ */
     function formatResultTime(date) {
       const pad = value => String(value).padStart(2, '0');
@@ -1665,8 +1643,8 @@
       }
 
       function emitLine() {
-        /* Golden-angle stepping prevents clustering; a small random offset
-           keeps the result organic instead of mathematically even. */
+        /* 用黄金角步进避免线段聚簇，再加一点随机偏移让结果看起来有机而非
+           数学式均匀。 */
         const angle = emissionIndex++ * GOLDEN_ANGLE
           + (Math.random() - 0.5) * RESULT_FX_CONFIG.angleJitter;
 

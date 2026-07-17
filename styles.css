@@ -1,5 +1,5 @@
 /* ================================================================
-   IMPACT DRAW — high-impact flat athletic graphic system
+   IMPACT DRAW —— 高冲击平面运动主义视觉系统
 ================================================================ */
 
 *,
@@ -35,8 +35,8 @@ html {
   background: var(--black);
 }
 
-/* Suppress every transition/animation on the first frame so the initial mode
-   state paints without triggering a cross-fade from the pre-JS default. */
+/* 首帧短路所有 transition/animation，让初始模式状态一次性呈现，
+   避免从 pre-JS 默认态到目标态的过渡闪烁。 */
 body.is-preload,
 body.is-preload *,
 body.is-preload *::before,
@@ -45,10 +45,9 @@ body.is-preload *::after {
   animation: none !important;
 }
 
-/* Page-entry starting state — matches each element's "inactive" position so
-   only the active-mode counterparts play the entrance transition when
-   is-preload is removed. !important ensures we beat mode-active rules that
-   share the same specificity but appear later in the cascade. */
+/* 页面入场起始态 —— 与各元素在"非当前模式"下的位置一致，这样 is-preload
+   移除时只有当前模式对应元素才真正播放入场过渡。!important 用来压过
+   同特异性但排在后面的 mode-active 规则。 */
 body.is-preload .hero-title,
 body.is-preload .hero-copy {
   opacity: 0 !important;
@@ -79,10 +78,9 @@ body.is-preload .shortcut-hint {
   transform: translateY(12px) !important;
 }
 
-/* Page-entry orchestration — durations extended ~50% and staggered per
-   element for a rhythmic wave (hero → stage → controls, roster interleaved).
-   Applied briefly after is-preload is removed; base transitions resume for
-   mode switching once is-entering is cleared. */
+/* 页面入场编排 —— 时长比切换动画长约 50%，各元素错落触发形成波浪节奏
+   （hero → stage → controls，roster 从上到下穿插）。is-preload 移除后短暂应用；
+   is-entering 清除后回到基础 transition 用于后续模式切换。 */
 body.is-entering .hero-copy {
   transition: opacity 930ms var(--ease-out), transform 930ms var(--ease-out);
   transition-delay: 0ms;
@@ -157,7 +155,7 @@ input {
   outline-offset: 3px;
 }
 
-/* App frame */
+/* 应用外层框架 */
 .app {
   width: min(100%, 1600px);
   height: 100dvh;
@@ -167,7 +165,7 @@ input {
   flex-direction: column;
 }
 
-/* Main composition */
+/* 主体布局 */
 .layout {
   flex: 1;
   min-height: 0;
@@ -332,7 +330,7 @@ body.mode-grouping .wheel-wrap {
   max-width: 100%;
 }
 
-/* Grouping preview stage: occupies the same box as .wheel-wrap. */
+/* 分组预览容器：与 .wheel-wrap 占用同一位置框。 */
 .group-stage {
   position: absolute;
   z-index: 2;
@@ -369,26 +367,24 @@ body.mode-grouping .group-stage {
   transform: skewX(-8deg);
 }
 
-/* Counter-skew the top-of-card labels so headline text stays upright, but
-   let the chip list ride the parent's skew — chips will inherit it visually
-   so each wrapped row starts along the parallelogram's slanted left edge.
-   Individual chips get their own counter-skew below to keep names readable. */
+/* 只对顶部标题反向 skew 让文字保持正向；芯片列表跟随父卡片的 -8° 斜切，
+   芯片折行时每行起点自然沿平行四边形左斜边分布。单个芯片下面再各自
+   反向 skew 保持名字可读。 */
 .group-slot > .group-slot__header,
 .group-slot > .group-slot__count {
   transform: skewX(8deg);
 }
 
-/* Header scales with slot size — 100cqw / cols ≈ single slot width, times a
-   factor gives a header sized to each block. Italic display matches the
-   hero-copy IMPACT DRAW voice. */
+/* Header 字号跟随 slot 尺寸 —— 100cqw / cols ≈ 单个 slot 的宽度，乘一个
+   系数得到与 slot 大小成比例的标题。斜体 display 字体呼应 hero-copy 的
+   IMPACT DRAW 声线。 */
 .group-slot__header {
   color: var(--white);
   font: italic 900 clamp(1.5rem, calc(100cqw / var(--group-cols, 2) * 0.17), 5.25rem)/0.9 var(--font-display);
   letter-spacing: -0.03em;
 }
 
-/* Count reads like a sports jersey: the number takes the size, the label
-   shrinks to uppercase caption. Green marks the "victory" beat. */
+/* 人数排版像球衣号码：数字撑大，单位缩成大写小字。绿色代表「胜利」瞬时。 */
 .group-slot__count {
   margin-top: auto;
   display: flex;
@@ -534,7 +530,7 @@ body.mode-grouping .draw-controls {
   transform: translateX(0);
 }
 
-/* Idle attention: periodic replay of the hover slide to hint at the CTA. */
+/* 闲置提示：每 5s 重放一次 hover 滑动，提示用户 CTA 按钮的存在。 */
 .spin-btn.attention:not(:disabled) .spin-btn__arrow--current {
   transform: translateX(120%);
 }
@@ -543,7 +539,7 @@ body.mode-grouping .draw-controls {
   transform: translateX(0);
 }
 
-/* Reset arrows to base without playing the return slide. */
+/* 把箭头重置到静止态，不播放回滑动画。 */
 .spin-btn.attention-reset .spin-btn__arrow {
   transition: none;
 }
@@ -567,8 +563,8 @@ body.mode-grouping .draw-controls {
   white-space: nowrap;
 }
 
-/* Grouping controls: sits in the same slot as .draw-controls; fades in when
-   body.mode-grouping is active so mode switching stays smooth. */
+/* 分组模式的控件条：与 .draw-controls 占同一底部位置；body.mode-grouping
+   激活时才淡入，保证模式切换过渡顺滑。 */
 .group-controls {
   position: absolute;
   z-index: 4;
@@ -651,8 +647,8 @@ body.mode-grouping .group-controls {
   transition: color 160ms var(--ease-out), background 160ms var(--ease-out);
 }
 
-/* Portaled tooltip: single body-level element positioned via JS so overflow:
-   hidden on .draw-stage never clips it. */
+/* Portal tooltip：挂在 body 上的单一元素，由 JS 定位，绝不会被 draw-stage
+   等祖先容器的 overflow: hidden 裁切。 */
 .tooltip {
   position: fixed;
   z-index: 9999;
@@ -754,7 +750,7 @@ body.mode-grouping .group-controls {
   pointer-events: none;
 }
 
-/* Roster */
+/* 选手阵容 */
 .roster {
   position: relative;
   min-height: 0;
@@ -1033,7 +1029,7 @@ body.mode-grouping .group-controls {
   color: var(--black);
 }
 
-/* Result takeover */
+/* 结果全屏接管 */
 .overlay {
   position: fixed;
   z-index: var(--z-overlay);
@@ -1157,7 +1153,7 @@ body.mode-grouping .group-controls {
   gap: 8px;
 }
 
-/* Group result: replaces the winner block with a compact card wall. */
+/* 分组结果页：用一片紧凑的卡片墙替代抽奖胜者的大标题块。 */
 .group-overlay .modal::before {
   content: 'GROUPS';
   -webkit-text-stroke: 2px color-mix(in srgb, var(--result-ink, var(--white)) 22%, transparent);
@@ -1192,8 +1188,8 @@ body.mode-grouping .group-controls {
   transform: skewX(-8deg);
 }
 
-/* Counter-skew only the header block; keep the list skewed with the card
-   so each wrapped row of chips starts along the slanted left edge. */
+/* 只反向 skew 标题区，让 list 继承父卡片的斜切，芯片折行时每行起点沿
+   卡片左斜边分布。 */
 .group-result__group > .group-result__header {
   transform: skewX(8deg);
 }
@@ -1225,10 +1221,9 @@ body.mode-grouping .group-controls {
   letter-spacing: -0.02em;
 }
 
-/* Member chips size to their own content and wrap naturally to the next
-   row. Vertically centered in the remaining card space so a small group
-   still fills the block visually. --chip-scale (member count) + cqw (card
-   width) drive sizing. */
+/* 成员芯片按自身内容宽度排布，一行放不下自动换行；纵向居中留白让人数
+   少的组也不会显得空。--chip-scale（人数） + cqw（卡片宽度）共同驱动
+   芯片尺寸。 */
 .group-result__list {
   list-style: none;
   padding: 0;
@@ -1358,7 +1353,7 @@ body.mode-grouping .group-controls {
   display: none;
 }
 
-/* Universal press feedback: color shift only, with no movement or resizing. */
+/* 通用按下反馈：只做颜色变化，不做位移或缩放。 */
 .spin-btn::after,
 .add-btn::after,
 .preset-btn::after,
@@ -1415,7 +1410,7 @@ body.mode-grouping .group-controls {
   }
 }
 
-/* Toast */
+/* Toast 提示条 */
 #toastRoot {
   position: absolute;
   z-index: var(--z-toast);
@@ -1428,7 +1423,7 @@ body.mode-grouping .group-controls {
   pointer-events: none;
 }
 
-/* Global toast surface: viewport-anchored, below the vertical center. */
+/* 全局 Toast 容器：相对视口定位在纵向中心偏下的位置。 */
 #globalToastRoot {
   position: fixed;
   z-index: var(--z-toast);
@@ -1456,7 +1451,7 @@ body.mode-grouping .group-controls {
   animation: fadeOut 200ms ease-in both;
 }
 
-/* Motion */
+/* 动效状态类 */
 body.spinning .draw-stage {
   z-index: 20;
   overflow: visible;
@@ -1512,8 +1507,8 @@ body.spinning .wheel-wrap {
     ) scale(var(--spin-scale, 1.2));
 }
 
-/* Grouping animation mirrors the spin's focus treatment: hide surrounding UI,
-   lift the stage above the roster, translate + scale to fill the viewport. */
+/* 分组动画沿用抽奖旋转的聚焦手法：淡化周围 UI，把 stage 提到阵容之上，
+   平移+缩放让它撑满视口。 */
 body.grouping-active .draw-stage {
   z-index: 20;
   overflow: visible;
@@ -1558,15 +1553,15 @@ body.grouping-active .group-stage {
   transition: transform 520ms var(--ease-out);
 }
 
-/* Cancel-in-progress: keep the shrinking wheel above the fading-in roster so
-   the roster's content does not clip or occlude it during the 520ms return. */
+/* 取消进行中：让缩小回位的转盘一直盖在正在淡入的阵容之上，回位的 520ms
+   期间转盘不会被阵容内容裁切或遮挡。 */
 body.canceling .draw-stage {
   z-index: 20;
   overflow: visible;
 }
 
-/* Grouping mode: hide the wheel-side controls and the weight column in the
-   roster; the roster still holds the shared player list. */
+/* 分组模式：隐藏抽奖侧的转盘/控件与阵容里的权重列，阵容仍是共用的选手
+   名单容器。 */
 body.mode-grouping .stat-weight,
 body.mode-grouping .weight-label,
 body.mode-grouping .weight-input {
@@ -1607,7 +1602,7 @@ body.mode-grouping .entry-row {
   to { opacity: 0; }
 }
 
-/* Tablet / mobile composition */
+/* 平板 / 移动端布局 */
 @media (max-width: 900px) {
   body {
     overflow-x: hidden;
@@ -1653,7 +1648,7 @@ body.mode-grouping .entry-row {
     border-top: 1px solid var(--line-soft);
   }
 
-  /* Keyboard-only hints have no place on touch layouts. */
+  /* 键盘专属提示在触控端没有意义，直接隐藏。 */
   .shortcut-hint {
     display: none;
   }
