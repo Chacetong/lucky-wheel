@@ -1019,25 +1019,57 @@
       });
     }
 
+    /* chaos 阶段每 120-260ms 调用一次；sampleRandomGroups 保证每次调用的
+       各组成员数量不变，所以只在第一次（或组数 / 组内人数变化时）重建 DOM，
+       之后的 tick 只更新已有芯片的背景色与文本，并通过重置 animation 让
+       cardFlash 重放。相较原来的 stage.innerHTML='' 全量重建，chaos 期间
+       DOM 操作大幅减少。 */
     function renderGroupSlots(groups) {
       const stage = document.getElementById('groupStage');
       if (!stage) return;
       const [cols, rows] = groupGridLayout(groups.length);
       stage.style.setProperty('--group-cols', cols);
       stage.style.setProperty('--group-rows', rows);
-      stage.innerHTML = '';
-      groups.forEach((members, i) => {
-        const slot = document.createElement('div');
-        slot.className = 'group-slot';
-        slot.dataset.index = i;
+
+      const existingSlots = Array.from(stage.querySelectorAll('.group-slot'));
+      const structureMatches = existingSlots.length === groups.length
+        && existingSlots.every((slot, i) => {
+          const list = slot.querySelector('.group-slot__list');
+          return list && list.children.length === groups[i].length;
+        });
+
+      if (!structureMatches) {
+        stage.innerHTML = '';
+        groups.forEach((members, i) => {
+          const slot = document.createElement('div');
+          slot.className = 'group-slot';
+          slot.dataset.index = i;
+          slot.style.setProperty('--chip-scale', chipScaleForCount(members.length));
+          slot.innerHTML = `
+            <div class="group-slot__header">Group ${String(i + 1).padStart(2, '0')}</div>
+            <div class="group-slot__list">
+              ${members.map(e => `<div class="group-card" style="background:${e.color}">${esc(e.title)}</div>`).join('')}
+            </div>
+          `;
+          stage.appendChild(slot);
+        });
+        return;
+      }
+
+      /* 结构一致：仅更新芯片内容 + 触发 cardFlash 重放。 */
+      existingSlots.forEach((slot, i) => {
+        const members = groups[i];
         slot.style.setProperty('--chip-scale', chipScaleForCount(members.length));
-        slot.innerHTML = `
-          <div class="group-slot__header">Group ${String(i + 1).padStart(2, '0')}</div>
-          <div class="group-slot__list">
-            ${members.map(e => `<div class="group-card" style="background:${e.color}">${esc(e.title)}</div>`).join('')}
-          </div>
-        `;
-        stage.appendChild(slot);
+        const cards = slot.querySelectorAll('.group-card');
+        cards.forEach((card, cardIdx) => {
+          const entry = members[cardIdx];
+          card.style.background = entry.color;
+          card.textContent = entry.title;
+          /* 用 animation:none + 强制 reflow + 恢复的手法让 keyframes 从头播放。 */
+          card.style.animation = 'none';
+          void card.offsetWidth;
+          card.style.animation = '';
+        });
       });
     }
 
