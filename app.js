@@ -1090,13 +1090,28 @@
       updateLock();
       bindGroupResultDragDrop(overlay);
 
+      const focusables = overlay.querySelectorAll('button');
       const primaryBtn = overlay.querySelector('.btn--primary');
       if (primaryBtn) primaryBtn.focus();
 
+      /* Esc 关闭 + Tab 循环焦点陷阱，与抽奖结果 modal 处理一致。挂在
+         document 上，无论当前焦点在 overlay 内外都能拦到。 */
       const onKey = (e) => {
         if (e.key === 'Escape') {
           e.preventDefault();
           closeGroupResult();
+          return;
+        }
+        if (e.key === 'Tab' && focusables.length) {
+          const first = focusables[0];
+          const last = focusables[focusables.length - 1];
+          if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault(); last.focus();
+          } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault(); first.focus();
+          } else if (!overlay.contains(document.activeElement)) {
+            e.preventDefault(); first.focus();
+          }
         }
       };
       document.addEventListener('keydown', onKey);
