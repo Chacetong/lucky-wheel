@@ -464,7 +464,10 @@ function runGroupingAnimation(finalGroups) {
 }
 
 /* 中止分组动画，让 stage 滑回原位。流程与 cancelSpin 对齐，也复用
-   .canceling 类保证 520ms 回位期间 stage 一直盖在阵容之上。 */
+   .canceling 类保证 520ms 回位期间 stage 一直盖在阵容之上。三段编排：
+     t=0    → body.canceling 触发 chip 淡出（220ms）；stage 同步开始回位
+     t=260  → renderGroupStage 重建为空槽预览，count 加 .is-entering 淡入
+     t=520  → 移除 canceling，动画收尾 */
 export function cancelGrouping() {
   if (!state.grouping) return;
   clearPendingTimers();
@@ -475,9 +478,23 @@ export function cancelGrouping() {
   document.body.classList.add('canceling');
   syncUI();
   showToast('分组已取消', { global: true });
+
+  setTimeout(() => {
+    renderGroupStage();
+    /* renderGroupStage 刚 wipe 掉 innerHTML 再重建，等下一帧再挂
+       .is-entering 保证 animation 从初始 keyframe 开始播放，而不是
+       同帧被浏览器优化掉。 */
+    requestAnimationFrame(() => {
+      const counts = document.querySelectorAll('#groupStage .group-slot__count');
+      counts.forEach(el => el.classList.add('is-entering'));
+      setTimeout(() => {
+        counts.forEach(el => el.classList.remove('is-entering'));
+      }, 340);
+    });
+  }, 260);
+
   setTimeout(() => {
     document.body.classList.remove('canceling');
-    renderGroupStage();
   }, 520);
 }
 
@@ -675,9 +692,12 @@ function closeGroupResult(onDone) {
   if (typeof el._cleanup === 'function') el._cleanup();
   updateLock();
   el.classList.add('out');
+  /* 先重建 stage 为空槽预览，再让 overlay 淡出 —— 否则 overlay 淡出的
+     240ms 里下方还留着上一轮的 chip，等 overlay 完全消失才 rebuild 会
+     看到"名字瞬间切成 N 名候选"的硬切。 */
+  renderGroupStage();
   setTimeout(() => {
     el.remove();
-    renderGroupStage();
     if (typeof onDone === 'function') onDone();
   }, 240);
 }

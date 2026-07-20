@@ -1636,6 +1636,24 @@ body.canceling .draw-stage {
   overflow: visible;
 }
 
+/* ESC 取消分组时：slot 内已放置或占位的 chip 一起淡出，避免 renderGroupStage
+   rebuild 瞬间硬切。淡出与 stage 回位的 400ms 并行，用户视觉上是「chip 消失
+   → 舞台归位 → 候选人数说明淡入」的顺畅衔接。 */
+body.canceling .group-stage .group-card {
+  opacity: 0;
+  transition: opacity 220ms var(--ease-out);
+}
+
+/* stage 重建后由 JS 给新 slot 的 count 加 .is-entering 触发淡入。 */
+.group-slot__count.is-entering {
+  animation: countIn 320ms var(--ease-out) both;
+}
+
+@keyframes countIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 /* 分组模式：隐藏抽奖侧的转盘/控件与阵容里的权重列，阵容仍是共用的选手
    名单容器。 */
 body.mode-grouping .stat-weight,
