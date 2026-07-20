@@ -1,16 +1,27 @@
 # 幸运大转盘
 
-一个适合聚会、课堂点名和随机选择的纯前端抽奖工具。项目不依赖框架或构建工具，直接打开 `index.html` 即可运行。
+一个适合聚会、课堂点名、团建分组的纯前端工具。零构建，只依赖系统自带的 `python3` 起静态服务。
 
 ## 功能
 
-- 添加、删除、清空参与者
-- 自定义名称、权重和转盘颜色
+**抽奖模式**
+- 添加、删除、清空参与者，`ACDC` 一键载入 10 人预设阵容
+- 自定义名称、权重、扇区颜色（相邻色自动错开）
 - 按权重计算中奖概率
-- 抽奖旋转与胜者揭晓的全屏动效
-- 可选”中奖后从转盘移除”
-- 使用 `localStorage` 自动保存名单和设置
-- 响应式布局、键盘操作和减少动画支持
+- 转盘旋转 + 胜者揭晓的全屏动效（速度线特效）
+- 可选「胜出后从转盘移除」，抽奖结果 modal 支持「再来一次」
+- ESC 中途取消，转盘顺滑归位
+
+**分组模式**
+- 按 2–20 组任意划分，支持「均匀」/「相同」两种分配模式
+- 中心大牌依次投放并飞入所属 slot 的分组动画
+- 分组结果 modal 支持拖拽换组
+- ESC 中途取消，chip 淡出 + 空槽预览淡入衔接
+
+**通用**
+- 使用 `localStorage` 自动保存阵容、组数、模式等
+- 全键盘可达（Space / Enter 启动，Tab 焦点循环，ESC 取消 / 关闭）
+- 响应式布局，支持 `prefers-reduced-motion`
 
 ## 项目结构
 
@@ -18,11 +29,12 @@
 .
 ├── index.html       # 页面语义结构
 ├── styles.css       # 布局、主题、组件和动画样式
+├── serve.sh         # 一键启动本地静态服务
 ├── js/              # ES Modules
 │   ├── state.js     # 共享状态 / 调色板 / 持久化 / 色彩工具
 │   ├── ui.js        # esc / toast / tooltip / syncUI / renderList
 │   ├── wheel.js     # Canvas 绘制 + 抽奖 + 结果 modal
-│   ├── grouping.js  # 分组算法 + 动画 + 结果 modal + 拖拽
+│   ├── grouping.js  # 分组算法 + 中心大牌投放动画 + 结果 modal + 拖拽
 │   └── main.js      # 阵容管理 + 模式切换 + 启动引导
 ├── DESIGN.md        # 产品与视觉设计规范
 └── README.md
@@ -45,26 +57,24 @@
 
 ## 代码分层
 
-`index.html` 只负责页面结构；`styles.css` 负责视觉表现；`js/` 下按职责拆分为 ES Modules：
+`index.html` 只负责页面结构；`styles.css` 负责视觉表现；`js/` 下按职责拆分为 ES Modules，依赖方向 `main → wheel/grouping → ui → state`，无循环导入：
 
-1. `state.js` —— 共享可变状态（`state` 对象）、调色板、`localStorage` 持久化、色彩工具
+1. `state.js` —— 共享可变状态（`state` 对象）、调色板、`localStorage` 持久化、色彩工具、`prefers-reduced-motion` 检测
 2. `ui.js` —— DOM 通用工具：`esc`、Toast、Tooltip、`syncUI`/`renderList`
-3. `wheel.js` —— Canvas 尺寸与转盘绘制、抽奖动画、命中计算、抽奖结果 modal
-4. `grouping.js` —— 分组算法、chaos 动画、结果 modal、拖拽换组
-5. `main.js` —— 阵容 CRUD、模式切换、快捷键、启动引导
+3. `wheel.js` —— Canvas 尺寸与转盘绘制、抽奖旋转 + anticipation、命中计算、抽奖结果 modal、速度线特效
+4. `grouping.js` —— 分组算法、中心大牌依次投放并飞入的动画编排（前重后轻 stagger + 动态 HOLD 防堆积）、结果 modal、组间拖拽换组
+5. `main.js` —— 阵容 CRUD、模式切换、事件委托、快捷键、启动引导
 
-抽奖结果由转盘停止后的指针角度决定。每个扇区占比为 `参与者权重 / 总权重`。
+抽奖结果由转盘停止后的指针角度决定，每个扇区占比为 `参与者权重 / 总权重`。分组结果由 Fisher–Yates 洗牌后按分配模式切片得到。
 
 ## 后续优化建议
 
-建议继续保持零构建起步，并按收益逐步演进：
+保持零构建起步，按收益推进：
 
-1. 将 `app.js` 进一步拆为 `state.js`、`wheel.js`、`ui.js`，用 ES Modules 明确依赖边界。
-2. 用事件委托替换 HTML 中的内联事件，降低结构和逻辑的耦合。
-3. 抽出纯函数 `pickWinner(entries, angle)`，为权重边界、空名单和移除模式增加自动化测试。
-4. 将颜色、间距、字号和动画时长整理为更完整的设计令牌，方便统一调整主题。
-5. 增加开发工具时优先选择轻量的 Vite、ESLint 和 Prettier；在确实需要组件复用前不必引入大型框架。
-6. 为主要桌面和移动端尺寸建立截图回归，避免视觉优化破坏布局。
+1. 抽出纯函数 `pickWinner(entries, angle)` / `assignGroups(entries, k, mode)`，为权重边界、空名单、移除模式加自动化测试。
+2. 把颜色、间距、字号、动画时长整理为更完整的设计令牌，便于换肤。
+3. 需要开发工具时优先轻量的 Vite / ESLint / Prettier；在确实需要组件复用前不必引入大型框架。
+4. 为主要桌面和移动端尺寸建立截图回归，避免视觉优化破坏布局。
 
 ## 数据说明
 
