@@ -60,7 +60,8 @@ export const state = {
   pendingRemoveId: null,
   /* 分组结果，动画完成后保存最终名单，用于结果页拖拽换组。 */
   currentGroupResult: null,
-  groupAnimTimers: { chaos: null, settle: null },
+  /* pending 收纳所有未完成的 setTimeout id，取消时统一 clear。 */
+  groupAnimTimers: { pending: [] },
 };
 
 /* 缓存 CSS 变量，避免每帧 getComputedStyle 的性能开销。 */

@@ -198,17 +198,60 @@ export function setDistMode(mode) {
 }
 
 /* ================================================================
-   分组动画
+   分组动画 —— 中心大牌 → 移动缩小飞入目标 chip
+   单个选手时序：
+     0                       → 中心大牌淡入 + scale-up
+     FADE_IN                 → 稳定居中（HOLD）
+     FADE_IN + HOLD          → 大牌 translate + scale 飞入 target chip
+                                 位置；同帧目标 chip 触发 chipLand（透明 →
+                                 白闪 → chip 色）
+     + FLIGHT                → 大牌销毁，chip 停在最终态
+   下一个 entry 的开始时间由 computeOffsets() 决定：前面间隔长，越到后
+   面越紧凑，让 20 人也能压缩在 ~6s 内。
 ================================================================ */
-function runGroupingAnimation(finalGroups) {
-  state.grouping = true;
-  state.currentGroupResult = finalGroups;
+/* 第一张大牌前的静默 —— 给舞台放大 + reduced-motion 之外的用户一点视觉
+   缓冲，避免点击后立刻炸出名字。 */
+const INITIAL_DELAY_MS = 200;
+const CENTER_FADE_IN_MS = 120;
+const CENTER_HOLD_MS = 60;
+const FLIGHT_MS = 170;
+const CHIP_LAND_MS = 160;
+const FINISH_HOLD_MS = 180;
+/* MIN_STAGGER 与 FADE_IN 对齐，让尾段"入场即起飞"，中心永远只一张；
+   POWER 越大，加速过程越"陡"—— 前几张明显停一下，到中段就已经压到接近
+   MIN，营造节奏递进感。 */
+const MIN_STAGGER_MS = 120;
+const MAX_STAGGER_MS = 310;
+const STAGGER_POWER = 3.0;
 
-  const stage = document.getElementById('groupStage');
-  if (!stage) return;
-  renderGroupStage();
+/* 生成 N 个 entry 各自开始的绝对偏移量。首步一定是 0；相邻步的 gap 从
+   MAX 衰减到 MIN，power > 1 让曲线前段陡、后段平（一开始一个一个来，
+   后面成串）。 */
+function computeOffsets(n) {
+  if (n <= 0) return [];
+  if (n === 1) return [0];
+  const offsets = [0];
+  const spread = Math.max(1, n - 2);
+  for (let i = 1; i < n; i++) {
+    const t = (i - 1) / spread;
+    const gap = MIN_STAGGER_MS + (MAX_STAGGER_MS - MIN_STAGGER_MS) * Math.pow(1 - t, STAGGER_POWER);
+    offsets.push(offsets[i - 1] + gap);
+  }
+  return offsets;
+}
 
-  /* 把 stage 平移到视口中心，与抽奖旋转时转盘的居中处理一致。 */
+function pushTimer(id) {
+  state.groupAnimTimers.pending.push(id);
+  return id;
+}
+
+function clearPendingTimers() {
+  state.groupAnimTimers.pending.forEach(id => clearTimeout(id));
+  state.groupAnimTimers.pending = [];
+}
+
+/* 把 stage 平移到视口中心，与抽奖旋转时转盘的居中处理一致。 */
+function centerStage(stage) {
   const rect = stage.getBoundingClientRect();
   const shiftX = window.innerWidth / 2 - (rect.left + rect.width / 2);
   const shiftY = window.innerHeight / 2 - (rect.top + rect.height / 2);
@@ -219,56 +262,213 @@ function runGroupingAnimation(finalGroups) {
   const availableSize = viewportShort - safeMargin * 2;
   const scale = Math.max(1, availableSize / rect.width);
   stage.style.setProperty('--group-scale', scale.toFixed(3));
+}
 
-  document.body.classList.add('grouping-active');
-  syncUI();
+/* 把 slot + placeholder chip 全量渲染出来。placeholder 保留最终布局所需
+   的 padding / font-size / 名字文本占位，仅背景与文字色透明，避免落地
+   时因内容出现而 reflow。传 landed=true 时直接以最终状态渲染，供
+   reduced-motion 分支使用。 */
+function renderPlaceholderSlots(finalGroups, { landed = false } = {}) {
+  const stage = document.getElementById('groupStage');
+  if (!stage) return;
+  const [cols, rows] = groupGridLayout(finalGroups.length);
+  stage.style.setProperty('--group-cols', cols);
+  stage.style.setProperty('--group-rows', rows);
+
+  const parts = finalGroups.map((members, i) => {
+    const chipScale = chipScaleForCount(members.length);
+    const chips = members.map(entry => `
+      <div class="group-card${landed ? '' : ' is-placeholder'}"
+           data-entry-id="${entry.id}"
+           style="--chip-color:${entry.color}">${esc(entry.title)}</div>
+    `).join('');
+    return `
+      <div class="group-slot" data-index="${i}" style="--chip-scale:${chipScale}">
+        <div class="group-slot__header">Group ${String(i + 1).padStart(2, '0')}</div>
+        <div class="group-slot__list">${chips}</div>
+      </div>
+    `;
+  });
+  stage.innerHTML = parts.join('');
+}
+
+/* 在 body 上挂一次性 center-card-stage；后续每个选手创建独立
+   center-card-transport 承载动画。stage 元素会一直存在到分组结束或
+   取消。 */
+function ensureCenterStage() {
+  let stage = document.getElementById('centerCardStage');
+  if (!stage) {
+    stage = document.createElement('div');
+    stage.id = 'centerCardStage';
+    stage.className = 'center-card-stage';
+    stage.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(stage);
+  }
+  return stage;
+}
+
+function removeCenterStage() {
+  const stage = document.getElementById('centerCardStage');
+  if (stage) stage.remove();
+}
+
+function createCenterCard(entry) {
+  const transport = document.createElement('div');
+  transport.className = 'center-card-transport';
+  transport.innerHTML = `<div class="center-card" style="--chip-color:${entry.color}">${esc(entry.title)}</div>`;
+  return transport;
+}
+
+/* 单个 entry 生命周期：中心大牌淡入 → hold（时长由调度侧动态给出）→
+   飞入目标 chip → 落位白闪。所有 timer 注册到 pending 便于 ESC 统一清理。
+   holdMs 由 runGroupingAnimation 根据下一张的到达时刻反推，保证前一张
+   总是在下一张淡入前进入飞行阶段，中心不会堆积多张同时可见的大牌。 */
+function placeEntry(entry, groupIdx, holdMs) {
+  if (!state.grouping) return;
+  const stage = document.getElementById('groupStage');
+  const centerStageEl = ensureCenterStage();
+  if (!stage || !centerStageEl) return;
+
+  const transport = createCenterCard(entry);
+  centerStageEl.appendChild(transport);
+
+  /* 挂上后下一帧再切 is-visible，保证 transition 从 initial 状态开始。 */
+  requestAnimationFrame(() => {
+    if (!state.grouping) { transport.remove(); return; }
+    transport.classList.add('is-visible');
+  });
+
+  pushTimer(setTimeout(() => {
+    if (!state.grouping) { transport.remove(); return; }
+    landEntry(transport, entry, groupIdx);
+  }, CENTER_FADE_IN_MS + Math.max(0, holdMs)));
+}
+
+function landEntry(transport, entry, groupIdx) {
+  const stage = document.getElementById('groupStage');
+  if (!stage) { transport.remove(); return; }
+
+  const placeholder = stage.querySelector(
+    `.group-slot[data-index="${groupIdx}"] .group-card.is-placeholder[data-entry-id="${entry.id}"]`
+  );
+  if (!placeholder) { transport.remove(); return; }
+
+  /* 计算目标位置 —— 中心大牌天然锚在视口正中央（top:50% left:50% +
+     translate(-50%,-50%)），飞行时把额外偏移 dx/dy + 缩放系数写进 inline
+     transform，transition 会平滑过渡到最终态。 */
+  const target = placeholder.getBoundingClientRect();
+  const cardRect = transport.getBoundingClientRect();
+  const dx = target.left + target.width / 2 - window.innerWidth / 2;
+  const dy = target.top + target.height / 2 - window.innerHeight / 2;
+  const scaleFactor = Math.min(
+    target.width / Math.max(1, cardRect.width),
+    target.height / Math.max(1, cardRect.height),
+  );
+
+  transport.classList.remove('is-visible');
+  transport.classList.add('is-flying');
+  transport.style.transform =
+    `translate(calc(-50% + ${dx.toFixed(1)}px), calc(-50% + ${dy.toFixed(1)}px)) scale(${scaleFactor.toFixed(3)})`;
+
+  /* 飞行结束后再触发 chip 落位动画（透明 → 白闪 → chip 色），确保中心大牌
+     已消失，同一名字不会同时出现在两处。 */
+  pushTimer(setTimeout(() => {
+    placeholder.classList.remove('is-placeholder');
+    placeholder.classList.add('is-landing');
+    pushTimer(setTimeout(() => {
+      placeholder.classList.remove('is-landing');
+    }, CHIP_LAND_MS));
+    transport.remove();
+  }, FLIGHT_MS));
+}
+
+function runGroupingAnimation(finalGroups) {
+  /* slot 内成员按 state.entries 顺序排列 —— 保证放置时永远是从前往后填，
+     不会出现「位置 3 已有芯片、位置 1/2 还空着」这种提前泄露"还剩几人"
+     的空位。分组归属仍是随机的，只是每个 slot 里的芯片位置对齐入场顺序。
+     currentGroupResult 也用这份排序结果，让结果 modal 的显示顺序与动画
+     结束时保持一致。 */
+  const entryIndex = new Map();
+  state.entries.forEach((e, i) => entryIndex.set(e.id, i));
+  const orderedGroups = finalGroups.map(members =>
+    [...members].sort((a, b) =>
+      (entryIndex.get(a.id) ?? 0) - (entryIndex.get(b.id) ?? 0))
+  );
+
+  state.grouping = true;
+  state.currentGroupResult = orderedGroups;
+
+  const stage = document.getElementById('groupStage');
+  if (!stage) return;
 
   const reduceMotion = prefersReducedMotion();
 
-  /* reduced-motion 下跳过 chaos 洗牌阶段：直接渲染最终结果，短暂停顿后开启
-     结果 modal。避免 CSS cardFlash 与高频 DOM 更新叠加造成闪烁。 */
+  /* reduced-motion：直接以 landed 状态渲染所有 chip，短暂 hold 后开结果
+     modal；不出中心牌，避免快速闪烁刺激。 */
   if (reduceMotion) {
-    renderGroupSlots(finalGroups);
-    state.groupAnimTimers.settle = setTimeout(() => {
+    renderPlaceholderSlots(orderedGroups, { landed: true });
+    centerStage(stage);
+    document.body.classList.add('grouping-active');
+    syncUI();
+    pushTimer(setTimeout(() => {
       if (!state.grouping) return;
       finishGroupingAnimation();
-    }, 200);
+    }, 240));
     return;
   }
 
-  const CHAOS_DURATION = 1600;
-  const chaosStart = performance.now();
+  /* 常规路径：先把所有 slot + placeholder chip 就位（透明），再进入舞台
+     居中放大，最后调度每个选手的中心牌 → 飞入。 */
+  renderPlaceholderSlots(orderedGroups, { landed: false });
+  centerStage(stage);
+  document.body.classList.add('grouping-active');
+  syncUI();
 
-  function chaosStep(iteration) {
+  /* 按 state.entries 顺序生成投放列表；每个 entry 反查所属组下标（分组本身
+     仍是随机的，只是投放次序按名单）。 */
+  const groupByEntryId = new Map();
+  orderedGroups.forEach((members, groupIdx) => {
+    members.forEach(entry => groupByEntryId.set(entry.id, groupIdx));
+  });
+  const plan = state.entries
+    .map(entry => ({ entry, groupIdx: groupByEntryId.get(entry.id) }))
+    .filter(item => item.groupIdx !== undefined);
+
+  const offsets = computeOffsets(plan.length);
+
+  /* 逐张反推 HOLD：card i 必须在 card i+1 淡入前离开中心。
+     card i 的飞行开始时刻 = offset_i + FADE_IN + HOLD_i；
+     强制该时刻 ≤ offset_{i+1}，即 HOLD_i ≤ (gap - FADE_IN)。
+     最后一张没有 next，用默认 CENTER_HOLD_MS 让观众有个稳定收尾。 */
+  const holds = offsets.map((offset, i) => {
+    if (i === offsets.length - 1) return CENTER_HOLD_MS;
+    const gap = offsets[i + 1] - offset;
+    return Math.max(0, gap - CENTER_FADE_IN_MS);
+  });
+
+  plan.forEach((item, i) => {
+    pushTimer(setTimeout(
+      () => placeEntry(item.entry, item.groupIdx, holds[i]),
+      INITIAL_DELAY_MS + offsets[i]
+    ));
+  });
+
+  /* 最后一个 entry 落位后再 hold 一下再开结果 modal。 */
+  const lastOffset = offsets[offsets.length - 1] || 0;
+  const totalDuration = INITIAL_DELAY_MS + lastOffset
+    + CENTER_FADE_IN_MS + CENTER_HOLD_MS + FLIGHT_MS + FINISH_HOLD_MS;
+  pushTimer(setTimeout(() => {
     if (!state.grouping) return;
-    const elapsed = performance.now() - chaosStart;
-    if (elapsed >= CHAOS_DURATION) {
-      renderGroupSlots(finalGroups);
-      state.groupAnimTimers.settle = setTimeout(() => {
-        if (!state.grouping) return;
-        finishGroupingAnimation();
-      }, 480);
-      return;
-    }
-    renderGroupSlots(sampleRandomGroups(finalGroups));
-    const interval = 120 + iteration * 20;
-    state.groupAnimTimers.chaos = setTimeout(() => chaosStep(iteration + 1), Math.min(interval, 260));
-  }
-  chaosStep(0);
+    finishGroupingAnimation();
+  }, totalDuration));
 }
 
 /* 中止分组动画，让 stage 滑回原位。流程与 cancelSpin 对齐，也复用
    .canceling 类保证 520ms 回位期间 stage 一直盖在阵容之上。 */
 export function cancelGrouping() {
   if (!state.grouping) return;
-  if (state.groupAnimTimers.chaos !== null) {
-    clearTimeout(state.groupAnimTimers.chaos);
-    state.groupAnimTimers.chaos = null;
-  }
-  if (state.groupAnimTimers.settle !== null) {
-    clearTimeout(state.groupAnimTimers.settle);
-    state.groupAnimTimers.settle = null;
-  }
+  clearPendingTimers();
+  removeCenterStage();
   state.grouping = false;
   state.currentGroupResult = null;
   document.body.classList.remove('grouping-active');
@@ -281,77 +481,10 @@ export function cancelGrouping() {
   }, 520);
 }
 
-/* chaos 阶段用，返回一份和最终分组人数一致但内容随机的洗牌，让每格
-   都闪出「看起来对但顺序还没定」的名字。 */
-function sampleRandomGroups(finalGroups) {
-  const shuffled = shuffledEntries(state.entries);
-  let idx = 0;
-  return finalGroups.map(group => {
-    const picks = [];
-    for (let i = 0; i < group.length; i++) {
-      picks.push(shuffled[idx % shuffled.length]);
-      idx++;
-    }
-    return picks;
-  });
-}
-
-/* chaos 阶段每 120-260ms 调用一次；sampleRandomGroups 保证每次调用的
-   各组成员数量不变，所以只在第一次（或组数 / 组内人数变化时）重建 DOM，
-   之后的 tick 只更新已有芯片的背景色与文本，并通过重置 animation 让
-   cardFlash 重放。相较原来的 stage.innerHTML='' 全量重建，chaos 期间
-   DOM 操作大幅减少。 */
-function renderGroupSlots(groups) {
-  const stage = document.getElementById('groupStage');
-  if (!stage) return;
-  const [cols, rows] = groupGridLayout(groups.length);
-  stage.style.setProperty('--group-cols', cols);
-  stage.style.setProperty('--group-rows', rows);
-
-  const existingSlots = Array.from(stage.querySelectorAll('.group-slot'));
-  const structureMatches = existingSlots.length === groups.length
-    && existingSlots.every((slot, i) => {
-      const list = slot.querySelector('.group-slot__list');
-      return list && list.children.length === groups[i].length;
-    });
-
-  if (!structureMatches) {
-    stage.innerHTML = '';
-    groups.forEach((members, i) => {
-      const slot = document.createElement('div');
-      slot.className = 'group-slot';
-      slot.dataset.index = i;
-      slot.style.setProperty('--chip-scale', chipScaleForCount(members.length));
-      slot.innerHTML = `
-        <div class="group-slot__header">Group ${String(i + 1).padStart(2, '0')}</div>
-        <div class="group-slot__list">
-          ${members.map(e => `<div class="group-card" style="background:${e.color}">${esc(e.title)}</div>`).join('')}
-        </div>
-      `;
-      stage.appendChild(slot);
-    });
-    return;
-  }
-
-  /* 结构一致：仅更新芯片内容 + 触发 cardFlash 重放。 */
-  existingSlots.forEach((slot, i) => {
-    const members = groups[i];
-    slot.style.setProperty('--chip-scale', chipScaleForCount(members.length));
-    const cards = slot.querySelectorAll('.group-card');
-    cards.forEach((card, cardIdx) => {
-      const entry = members[cardIdx];
-      card.style.background = entry.color;
-      card.textContent = entry.title;
-      /* 用 animation:none + 强制 reflow + 恢复的手法让 keyframes 从头播放。 */
-      card.style.animation = 'none';
-      void card.offsetWidth;
-      card.style.animation = '';
-    });
-  });
-}
-
 function finishGroupingAnimation() {
   state.grouping = false;
+  clearPendingTimers();
+  removeCenterStage();
   document.body.classList.remove('grouping-active');
   syncUI();
   showGroupResult(state.currentGroupResult);

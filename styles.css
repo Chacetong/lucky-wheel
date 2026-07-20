@@ -23,6 +23,10 @@
   --warning: #ffd23f;
   --font-ui: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  /* chip 专用：Barlow 负责 Latin，Noto Sans SC 兜底中文；两者都在 Google
+     Fonts 加载了 900 权重，避免中文 fallback 到系统字体后没有 900 只能
+     合成"假粗体"而看起来偏细。 */
+  --font-chip: 'Barlow Condensed', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   --ease-out: cubic-bezier(0.25, 0.8, 0.4, 1);
   --z-overlay: 100;
   --z-modal: 110;
@@ -420,18 +424,89 @@ body.mode-grouping .group-stage {
   align-items: center;
   justify-content: center;
   padding: calc((1cqw + 5px) * var(--chip-scale, 1)) calc((1.6cqw + 9px) * var(--chip-scale, 1));
+  background: var(--chip-color, transparent);
   color: var(--black);
-  font: 900 calc((2cqw + 0.8rem) * var(--chip-scale, 1))/1 var(--font-display);
+  font: 900 calc((2cqw + 0.8rem) * var(--chip-scale, 1))/1 var(--font-chip);
   letter-spacing: -0.015em;
   white-space: nowrap;
   transform: skewX(8deg);
-  animation: cardFlash 220ms var(--ease-out) both;
+  transition:
+    background 300ms var(--ease-out),
+    color 220ms 60ms var(--ease-out);
 }
 
-@keyframes cardFlash {
-  0% { opacity: 0; transform: skewX(8deg) scale(0.86); }
-  55% { opacity: 1; transform: skewX(8deg) scale(1.06); }
-  100% { opacity: 1; transform: skewX(8deg) scale(1); }
+/* 分组动画开始时先渲染成 placeholder：透明底 + 透明文字。占位是完全隐形
+   的（不加虚线外框），避免不同名字宽度提前泄露分配信息；落位由
+   .is-landing 上的 chipLand 关键帧接管，先闪一下白再收敛到 chip 色，
+   与中心大牌淡出同步。 */
+.group-card.is-placeholder {
+  background: transparent;
+  color: transparent;
+}
+
+.group-card.is-landing {
+  animation: chipLand 160ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* 落位时 chip 已经是 chip 色（由 remove('is-placeholder') 让基类背景生效），
+   与刚消失的中心大牌颜色一致；关键帧只负责快速白闪一下再收回，形成"落
+   位反馈"，不再做透明→有色的淡入。 */
+@keyframes chipLand {
+  0%   { background: var(--chip-color); color: var(--black); }
+  30%  { background: var(--white);      color: var(--black); }
+  100% { background: var(--chip-color); color: var(--black); }
+}
+
+/* ================================================================
+   分组动画中央大牌
+   —— stage 覆盖全屏但不吃事件；transport 用 fixed + translate(-50%, -50%)
+   把每张卡片钉在视口正中心，多张同时存在也不会互相排开。center-card
+   本身不带 skew，视觉上与最终 chip（父级 -8° + 自身 +8° 抵消后的正长
+   方形）一致，仅按比例放大。
+================================================================ */
+.center-card-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+}
+
+.center-card-transport {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.7);
+  opacity: 0;
+  will-change: transform, opacity;
+  /* 入场：ease-out-back 在到点前先 overshoot ~5%，再收敛到 scale(1)，
+     产生轻微 Q 弹。飞行阶段的 transition 会由 .is-flying 覆盖。 */
+  transition:
+    transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 100ms var(--ease-out);
+}
+
+.center-card-transport.is-visible {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+}
+
+/* 飞行阶段：JS 会写入 inline transform（translate 到目标 chip + scale
+   缩小到目标尺寸）。全程保持 opacity: 1 —— 之前的淡出会让大牌在落位前
+   闪一下透明化，改为节点直接销毁交给 chip 白闪接管。 */
+.center-card-transport.is-flying {
+  opacity: 1;
+  transition: transform 170ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* 中心大牌 = 放大版的 chip，外观完全与落位后的 .group-card 对齐（同字重、
+   同字距、无 italic、无 shadow），仅字号更大。 */
+.center-card {
+  padding: clamp(18px, 3.4vw, 44px) clamp(30px, 5.5vw, 74px);
+  background: var(--chip-color, var(--white));
+  color: var(--black);
+  font: 900 clamp(2.4rem, 8vw, 6rem)/1 var(--font-chip);
+  letter-spacing: -0.015em;
+  white-space: nowrap;
 }
 
 .draw-controls {
