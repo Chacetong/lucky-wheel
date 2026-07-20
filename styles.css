@@ -310,7 +310,7 @@ body.mode-grouping .hero-title__body[data-mode="grouping"] {
 
 .wheel-wrap {
   position: absolute;
-  z-index: 2;
+  z-index: 4;
   top: 48%;
   right: clamp(18px, 2.8cqw, 34px);
   width: clamp(460px, 75cqw, 704px);
@@ -338,7 +338,7 @@ body.mode-grouping .wheel-wrap {
 /* 分组预览容器：与 .wheel-wrap 占用同一位置框。 */
 .group-stage {
   position: absolute;
-  z-index: 2;
+  z-index: 4;
   top: 48%;
   right: clamp(18px, 2.8cqw, 34px);
   width: clamp(460px, 75cqw, 704px);

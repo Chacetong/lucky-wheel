@@ -296,9 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
     redraw();
     syncUI();
   } else {
-    addEntry('Player 1');
-    addEntry('Player 2');
-    addEntry('Player 3');
+    for (let i = 1; i <= 8; i++) addEntry(`Player ${i}`);
   }
 
   setDistMode(state.distMode);
