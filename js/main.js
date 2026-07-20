@@ -13,7 +13,6 @@ import {
   ensureDistinctAdjacentColors,
 } from './state.js';
 import {
-  esc,
   showToast,
   bindTooltipDelegation,
   syncUI,
