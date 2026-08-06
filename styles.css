@@ -1277,6 +1277,13 @@ body.mode-grouping .group-controls {
   color: var(--white);
 }
 
+.group-overlay .modal__time {
+  grid-column: 1;
+  grid-row: 3;
+  align-self: end;
+  color: var(--white);
+}
+
 .group-result {
   position: relative;
   z-index: 2;
@@ -1912,6 +1919,10 @@ body.mode-grouping .entry-row {
     grid-row: 4;
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .group-overlay .modal__time {
+    margin-bottom: 16px;
   }
 
   .btn {

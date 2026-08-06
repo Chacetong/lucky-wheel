@@ -528,6 +528,7 @@ function showGroupResult(groups) {
       <div class="group-result" style="--result-cols: ${cols}">
         ${groups.map((_, i) => renderGroupResultGroupMarkup(i)).join('')}
       </div>
+      <div class="modal__time">拖动名片可调整分组</div>
       <div class="modal__actions">
         <button type="button" class="btn btn--primary" data-action="regroup">
           <span>重新分组</span>
