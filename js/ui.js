@@ -15,9 +15,16 @@ export function syncUI() {
   const groupBtn = document.getElementById('groupBtn');
   const notice = document.getElementById('notice');
   const enough = state.entries.length >= 2;
+  /* 权重插值动画进行中不允许开抽 —— 扇区面积此刻仍在变，命中判定会错位。
+     不走 updateLock 的整面板 inert，那会打断正在输入名称的用户。 */
+  const weightAnimating = state.weightAnimRafId !== null;
   if (spinBtn) {
-    spinBtn.disabled = state.spinning;
+    spinBtn.disabled = state.spinning || weightAnimating;
     spinBtn.querySelector('.spin-btn__text').textContent = state.spinning ? '等待命运…' : '见证奇迹';
+  }
+  const randomWeightBtn = document.getElementById('randomWeightBtn');
+  if (randomWeightBtn) {
+    randomWeightBtn.disabled = weightAnimating || state.entries.length === 0;
   }
   if (groupBtn) {
     groupBtn.disabled = state.grouping;
@@ -39,7 +46,9 @@ export function updateLock() {
 export function syncStats() {
   const total = totalWeight();
   document.getElementById('statCount').textContent = state.entries.length;
-  document.getElementById('statWeight').textContent = Number.isInteger(total) ? total : total.toFixed(1);
+  /* 与列表里的权重列统一固定一位小数；插值动画期间也不会在整数 / 小数
+     之间来回跳变导致数字宽度抖动。 */
+  document.getElementById('statWeight').textContent = total.toFixed(1);
 }
 
 /* ================================================================
@@ -70,7 +79,7 @@ export function renderList() {
       <input class="weight-input"
              type="number"
              inputmode="decimal"
-             value="${entry.weight}"
+             value="${entry.weight.toFixed(1)}"
              min="0.1" max="99999" step="0.1"
              aria-label="${esc(entry.title)} 的权重" />
       <button type="button" class="del-btn" data-action="delete" title="移除" aria-label="移除 ${esc(entry.title)}">✕</button>

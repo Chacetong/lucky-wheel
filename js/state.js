@@ -51,6 +51,8 @@ export const state = {
   rafId: null,
   redrawRafId: null,
   saveTimerId: null,
+  /* 「随机权重」数值插值动画的 rAF 句柄；非 null 表示动画进行中。 */
+  weightAnimRafId: null,
   /* 取消抽奖用的状态：preSpinRotation 记录抽奖开始前的静止角度，ESC 时可
      以顺滑回位；restoreWinnerOnCancel 保存上一轮结果 modal 的胜者，用于
      从「再来一次」触发的抽奖被取消时把结算页复原。 */

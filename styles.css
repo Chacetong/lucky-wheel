@@ -1061,12 +1061,28 @@ body.mode-grouping .group-controls {
 }
 
 .roster__actions {
+  position: relative;
   flex-shrink: 0;
   padding: 14px 0;
   display: grid;
-  grid-template-columns: 1fr auto auto;
   gap: 8px;
   border-top: 1px solid var(--line);
+}
+
+/* 主操作「添加选手」独占一行，副操作在下方等宽平分。列数跟随实际子元素数量：
+   分组模式隐藏「随机权重」后剩下两个按钮仍平分整行，若写死 repeat(3, 1fr)
+   会留一个空列把按钮挤到左侧。 */
+.roster__actions-row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 8px;
+}
+
+/* 等宽格里由列宽决定尺寸，覆盖按钮自带的横向 padding 防窄栏溢出。 */
+.roster__actions-row > button {
+  min-width: 0;
+  padding: 0 6px;
 }
 
 .add-btn,
@@ -1115,14 +1131,27 @@ body.mode-grouping .group-controls {
   transition: color var(--dur-fast) var(--ease-out);
 }
 
-.add-btn:hover,
-.preset-btn:hover {
+.add-btn:hover:not(:disabled),
+.preset-btn:hover:not(:disabled) {
   border-color: var(--green);
   color: var(--black);
 }
 
-.add-btn:hover span {
+.add-btn:hover:not(:disabled) span {
   color: var(--black);
+}
+
+/* 弱状态：描边退到分隔线色、文字退到次要灰，与 .spin-btn:disabled 同调。 */
+.add-btn:disabled,
+.preset-btn:disabled,
+.clear-btn:disabled {
+  border-color: var(--line);
+  color: var(--gray);
+  cursor: not-allowed;
+}
+
+.add-btn:disabled span {
+  color: var(--gray);
 }
 
 .clear-btn {
@@ -1138,7 +1167,7 @@ body.mode-grouping .group-controls {
   padding: 0 16px;
 }
 
-.clear-btn:hover {
+.clear-btn:hover:not(:disabled) {
   border-color: var(--danger);
   color: var(--black);
 }
@@ -1462,15 +1491,18 @@ body.mode-grouping .group-controls {
 }
 
 .spin-btn:hover:not(:disabled)::before,
-.add-btn:hover::before,
-.preset-btn:hover::before,
-.clear-btn:hover::before,
+.add-btn:hover:not(:disabled)::before,
+.preset-btn:hover:not(:disabled)::before,
+.clear-btn:hover:not(:disabled)::before,
 .del-btn:hover::before,
 .btn:hover::before {
   transform: translateX(0);
 }
 
-.spin-btn:disabled::before {
+.spin-btn:disabled::before,
+.add-btn:disabled::before,
+.preset-btn:disabled::before,
+.clear-btn:disabled::before {
   display: none;
 }
 
@@ -1532,11 +1564,15 @@ body.mode-grouping .group-controls {
 }
 
 /* Toast 提示条 */
+
+/* 锚在按钮区（.roster__actions）正上方居中：bottom: 100% 贴着 footer 上沿，
+   按钮区增减行数时位置自动跟随，不必再按高度调魔数。多条同时出现时向上
+   堆叠，最新一条在最上方。 */
 #toastRoot {
   position: absolute;
   z-index: var(--z-toast);
   left: 50%;
-  bottom: 82px;
+  bottom: calc(100% + 10px);
   transform: translateX(-50%);
   display: flex;
   flex-direction: column-reverse;
@@ -1703,7 +1739,8 @@ body.canceling .group-stage .group-card {
    名单容器。 */
 body.mode-grouping .stat-weight,
 body.mode-grouping .weight-label,
-body.mode-grouping .weight-input {
+body.mode-grouping .weight-input,
+body.mode-grouping .random-weight-btn {
   display: none;
 }
 

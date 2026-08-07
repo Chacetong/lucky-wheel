@@ -138,14 +138,18 @@
           </div>
         </div>
 
-        <div id="toastRoot"></div>
-
         <footer class="roster__actions">
+          <!-- 定位锚点是 footer 自身，放在内部才能跟随按钮区高度变化。 -->
+          <div id="toastRoot"></div>
           <button class="add-btn" id="addBtn" type="button">
             <span aria-hidden="true">＋</span> 添加选手
           </button>
-          <button class="preset-btn" type="button" title="载入 ACDC 预设阵容">ACDC</button>
-          <button class="clear-btn" type="button" title="清空全部">清空</button>
+          <div class="roster__actions-row">
+            <button class="preset-btn random-weight-btn" id="randomWeightBtn" type="button"
+              title="所有选手权重随机为 1.0 – 10.0">随机权重</button>
+            <button class="preset-btn" type="button" title="载入 ACDC 预设阵容">ACDC</button>
+            <button class="clear-btn" type="button" title="清空全部">清空</button>
+          </div>
         </footer>
       </aside>
     </main>

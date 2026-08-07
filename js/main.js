@@ -133,6 +133,80 @@ function loadPresetRoster() {
   showToast('已载入 ACDC 阵容');
 }
 
+/* ================================================================
+   随机权重
+   —— 全部选手同时从当前值插值到新的随机值，先快后慢。
+================================================================ */
+const RANDOM_WEIGHT_MIN_STEP = 10;   // 1.0 → 10（以 0.1 为单位的整数域）
+const RANDOM_WEIGHT_MAX_STEP = 100;  // 10.0 → 100
+const WEIGHT_ANIM_MS = 900;
+
+/* 与 CSS 的 --ease-out-quart 同一条曲线，保持项目内动效一致。 */
+const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
+
+/* 在 0.1 步进的整数域里取随机，避免浮点累积误差，含两端。 */
+function randomWeight() {
+  const span = RANDOM_WEIGHT_MAX_STEP - RANDOM_WEIGHT_MIN_STEP + 1;
+  return (RANDOM_WEIGHT_MIN_STEP + Math.floor(Math.random() * span)) / 10;
+}
+
+function randomizeWeights() {
+  if (state.entries.length === 0) return;
+  if (state.spinning || state.grouping || state.weightAnimRafId !== null) return;
+
+  /* 缓存 input 引用，避免每帧重新查询 DOM。动画期间若某行被删除，写入
+     已脱离文档的 input 无副作用，转盘按新的 entries 重绘，不需要额外兜底。 */
+  const plan = state.entries.map(entry => ({
+    entry,
+    input: document.querySelector(`.entry-row[data-id="${entry.id}"] .weight-input`),
+    from: entry.weight,
+    to: randomWeight(),
+  }));
+
+  /* 动画中 entry.weight 保留连续浮点值来驱动扇区角度 —— 若每帧都量化到
+     0.1 步进，扇区角度就是台阶式跳变，视觉上即为抖动（easeOutQuart 开头
+     极快，100ms 内跨掉大量台阶，抖动最明显）。数字显示照旧 toFixed(1)，
+     只有落地那一帧才把权重真正量化，保证存下去的值干净。 */
+  const applyProgress = (progress, { quantize = false } = {}) => {
+    plan.forEach(({ entry, input, from, to }) => {
+      const raw = from + (to - from) * progress;
+      entry.weight = quantize ? Math.round(raw * 10) / 10 : raw;
+      if (input) input.value = entry.weight.toFixed(1);
+    });
+    redraw();
+    syncStats();
+  };
+
+  const finish = () => {
+    state.weightAnimRafId = null;
+    syncUI();
+    saveState();
+    /* 数值停稳后才提示，避免 Toast 与跳动的数字同时抢注意力。 */
+    showToast('已随机全员权重');
+  };
+
+  if (prefersReducedMotion()) {
+    applyProgress(1, { quantize: true });
+    finish();
+    return;
+  }
+
+  const start = performance.now();
+  const step = (now) => {
+    const t = Math.min(1, (now - start) / WEIGHT_ANIM_MS);
+    if (t < 1) {
+      applyProgress(easeOutQuart(t));
+      state.weightAnimRafId = requestAnimationFrame(step);
+    } else {
+      applyProgress(1, { quantize: true });
+      finish();
+    }
+  };
+  state.weightAnimRafId = requestAnimationFrame(step);
+  /* 先置句柄再同步，让「随机权重」和抽奖按钮立刻进入禁用态。 */
+  syncUI();
+}
+
 function cycleColor(id) {
   const entryIndex = state.entries.findIndex(entry => entry.id === id);
   if (entryIndex < 0) return;
@@ -183,7 +257,9 @@ function commitWeight(id, input) {
   e.weight = (!Number.isFinite(w) || w < 0.1)
     ? 0.1
     : Math.min(Math.round(w * 10) / 10, 99999);
-  input.value = e.weight;
+  /* 失焦时才补齐一位小数；打字过程中不格式化，否则输入 "1.5" 打到 "1."
+     时就会被改写成 "1.0"，没法继续输入。 */
+  input.value = e.weight.toFixed(1);
   redraw();
   syncStats();
   saveState();
@@ -284,7 +360,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (spinBtn) spinBtn.addEventListener('click', () => handleSpin());
   const addBtn = document.getElementById('addBtn');
   if (addBtn) addBtn.addEventListener('click', () => addEntry());
-  const presetBtn = document.querySelector('.preset-btn');
+  const randomWeightBtn = document.getElementById('randomWeightBtn');
+  if (randomWeightBtn) randomWeightBtn.addEventListener('click', randomizeWeights);
+  /* 「随机权重」也用 .preset-btn 样式，选择器要排除掉它才能拿到 ACDC。 */
+  const presetBtn = document.querySelector('.preset-btn:not(#randomWeightBtn)');
   if (presetBtn) presetBtn.addEventListener('click', loadPresetRoster);
   const clearBtn = document.querySelector('.clear-btn');
   if (clearBtn) clearBtn.addEventListener('click', clearAll);
