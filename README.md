@@ -29,7 +29,14 @@
 .
 ├── index.html       # 页面语义结构
 ├── styles.css       # 布局、主题、组件和动画样式
+├── site.webmanifest # PWA 元信息与图标声明
 ├── serve.sh         # 一键启动本地静态服务
+├── assets/
+│   ├── favicon.svg          # 站点图标矢量源（主力）
+│   ├── favicon-32.png       # 老 Safari / 抓取器兜底
+│   ├── apple-touch-icon.png # iOS 主屏图标 180×180
+│   ├── icon-192.png         # PWA 图标
+│   └── icon-512.png         # PWA 启动图标
 ├── js/              # ES Modules
 │   ├── state.js     # 共享状态 / 调色板 / 持久化 / 色彩工具
 │   ├── ui.js        # esc / toast / tooltip / syncUI / renderList
