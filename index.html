@@ -105,7 +105,7 @@
             </span>
           </button>
 
-          <label class="group-count-input" title="组数">
+          <label class="num-field group-count-input" title="组数">
             <span>组数</span>
             <input type="number" id="groupCount" value="2" min="2" step="1" inputmode="numeric" />
           </label>
@@ -141,14 +141,25 @@
         <footer class="roster__actions">
           <!-- 定位锚点是 footer 自身，放在内部才能跟随按钮区高度变化。 -->
           <div id="toastRoot"></div>
-          <button class="add-btn" id="addBtn" type="button">
-            <span aria-hidden="true">＋</span> 添加选手
-          </button>
-          <div class="roster__actions-row">
-            <button class="preset-btn random-weight-btn" id="randomWeightBtn" type="button"
-              title="所有选手权重随机为 1.0 – 10.0">随机权重</button>
-            <button class="preset-btn" type="button" title="载入 ACDC 预设阵容">ACDC</button>
+          <div class="roster__actions-row roster__actions-row--main">
+            <button class="add-btn" id="addBtn" type="button">
+              <span aria-hidden="true">＋</span> 添加选手
+            </button>
+            <!-- ACDC 预设现在走隐藏指令（敲 A-C-D-C），按钮已移除。若日后要恢复
+                 可见按钮，插在这里：本行列模板是 1fr + auto，第三个子元素落进隐式
+                 auto 列，自然得到「添加选手弹性 + ACDC/清空各按内容宽」。 -->
             <button class="clear-btn" type="button" title="清空全部">清空</button>
+          </div>
+          <div class="roster__actions-row roster__actions-row--weight">
+            <button class="preset-btn random-weight-btn" id="randomWeightBtn" type="button">随机权重</button>
+            <div class="num-field range-field">
+              <span>范围</span>
+              <input type="number" id="weightMin" inputmode="decimal" value="1.0"
+                min="0.1" max="100" step="0.1" aria-label="随机权重下限" />
+              <em aria-hidden="true">—</em>
+              <input type="number" id="weightMax" inputmode="decimal" value="10.0"
+                min="0.1" max="100" step="0.1" aria-label="随机权重上限" />
+            </div>
           </div>
         </footer>
       </aside>

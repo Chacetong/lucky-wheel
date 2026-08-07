@@ -4,6 +4,12 @@
 export const MAX_ENTRIES = 1000;
 export const GROUP_MAX = 20;
 
+/* 随机权重的可选范围边界。下限与手动输入的权重下限一致（0.1），上限收紧到
+   100：随机场景下再大的权重没有实际意义，一个 5000 会把其他扇区压成看不见
+   的细线，转盘直接失去可读性。手动输入仍可到 99999，不受此限制。 */
+export const RANDOM_WEIGHT_FLOOR = 0.1;
+export const RANDOM_WEIGHT_CEIL = 100;
+
 export const PALETTE = [
   '#F06A6A', '#6AF078', '#856AF0', '#F0936A',
   '#6AF0A0', '#AD6AF0', '#F0BB6A', '#6AF0C8',
@@ -53,6 +59,9 @@ export const state = {
   saveTimerId: null,
   /* 「随机权重」数值插值动画的 rAF 句柄；非 null 表示动画进行中。 */
   weightAnimRafId: null,
+  /* 「随机权重」的取值范围，含两端。 */
+  randomWeightMin: 1,
+  randomWeightMax: 10,
   /* 取消抽奖用的状态：preSpinRotation 记录抽奖开始前的静止角度，ESC 时可
      以顺滑回位；restoreWinnerOnCancel 保存上一轮结果 modal 的胜者，用于
      从「再来一次」触发的抽奖被取消时把结算页复原。 */
@@ -143,6 +152,8 @@ export function saveState() {
       mode: state.currentMode,
       groupCount: state.groupCount,
       distMode: state.distMode,
+      randomWeightMin: state.randomWeightMin,
+      randomWeightMax: state.randomWeightMax,
     }));
   } catch (_) {
     /* quota exceeded / 隐私模式 / SecurityError 等；只在首次失败时提示。 */
@@ -159,6 +170,16 @@ export function scheduleSave() {
     state.saveTimerId = null;
     saveState();
   }, 180);
+}
+
+/* 把随机范围的端点收敛到合法域：0.1 步进 + [FLOOR, CEIL] 区间。非数字返回
+   null，交由调用方决定是回退默认值还是提示。 */
+export function clampRandomWeight(value) {
+  if (!Number.isFinite(value)) return null;
+  return Math.min(
+    RANDOM_WEIGHT_CEIL,
+    Math.max(RANDOM_WEIGHT_FLOOR, Math.round(value * 10) / 10),
+  );
 }
 
 export function loadState() {
@@ -183,6 +204,14 @@ export function loadState() {
       state.groupCount = Math.floor(data.groupCount);
     }
     if (data.distMode === 'even' || data.distMode === 'fill') state.distMode = data.distMode;
+    /* 两端各自收敛后再排序，手改过 localStorage 或旧版本数据也不会留下非法
+       区间；只要有一端不可用就整体退回默认值，避免出现半合法的范围。 */
+    const rangeMin = clampRandomWeight(Number(data.randomWeightMin));
+    const rangeMax = clampRandomWeight(Number(data.randomWeightMax));
+    if (rangeMin !== null && rangeMax !== null) {
+      state.randomWeightMin = Math.min(rangeMin, rangeMax);
+      state.randomWeightMax = Math.max(rangeMin, rangeMax);
+    }
     return true;
   } catch (_) {
     return false;

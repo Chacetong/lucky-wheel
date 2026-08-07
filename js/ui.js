@@ -26,6 +26,12 @@ export function syncUI() {
   if (randomWeightBtn) {
     randomWeightBtn.disabled = weightAnimating || state.entries.length === 0;
   }
+  /* 插值途中锁住范围输入：此刻改范围不会影响已经定好的本轮目标值，界面会
+     显示一个与实际结果不符的区间。 */
+  ['weightMin', 'weightMax'].forEach(id => {
+    const input = document.getElementById(id);
+    if (input) input.disabled = weightAnimating;
+  });
   if (groupBtn) {
     groupBtn.disabled = state.grouping;
     groupBtn.querySelector('.spin-btn__text').textContent = state.grouping ? '等待结果…' : '开始分组';

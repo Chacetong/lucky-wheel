@@ -3,6 +3,9 @@ import {
   MAX_ENTRIES,
   PALETTE,
   ACDC_ROSTER,
+  RANDOM_WEIGHT_FLOOR,
+  RANDOM_WEIGHT_CEIL,
+  clampRandomWeight,
   prefersReducedMotion,
   readCssVars,
   loadState,
@@ -133,21 +136,76 @@ function loadPresetRoster() {
   showToast('已载入 ACDC 阵容');
 }
 
+/* ACDC 预设不再占按钮位，改成隐藏指令：非输入态下顺序敲出 A-C-D-C 即触发，
+   不区分大小写。用固定长度的滑动窗口匹配，所以「aacdc」这类多敲一次的输入
+   同样命中，也不需要超时重置缓冲。 */
+const PRESET_CODE = 'acdc';
+let presetCodeBuffer = '';
+
+function trackPresetCode(e) {
+  /* 带修饰键的是快捷键而非打字；长度大于 1 的是功能键（Shift/Enter/…）。 */
+  if (e.metaKey || e.ctrlKey || e.altKey || e.key.length !== 1) return;
+  presetCodeBuffer = (presetCodeBuffer + e.key.toLowerCase()).slice(-PRESET_CODE.length);
+  if (presetCodeBuffer !== PRESET_CODE) return;
+  presetCodeBuffer = '';
+  loadPresetRoster();
+}
+
 /* ================================================================
    随机权重
    —— 全部选手同时从当前值插值到新的随机值，先快后慢。
 ================================================================ */
-const RANDOM_WEIGHT_MIN_STEP = 10;   // 1.0 → 10（以 0.1 为单位的整数域）
-const RANDOM_WEIGHT_MAX_STEP = 100;  // 10.0 → 100
 const WEIGHT_ANIM_MS = 900;
 
 /* 与 CSS 的 --ease-out-quart 同一条曲线，保持项目内动效一致。 */
 const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
 
-/* 在 0.1 步进的整数域里取随机，避免浮点累积误差，含两端。 */
+/* 在 0.1 步进的整数域里取随机，避免浮点累积误差，含两端。上下限相等时退化
+   为「全员统一权重」，是合理用法，不需要特殊处理。 */
 function randomWeight() {
-  const span = RANDOM_WEIGHT_MAX_STEP - RANDOM_WEIGHT_MIN_STEP + 1;
-  return (RANDOM_WEIGHT_MIN_STEP + Math.floor(Math.random() * span)) / 10;
+  const lo = Math.round(state.randomWeightMin * 10);
+  const hi = Math.round(state.randomWeightMax * 10);
+  return (lo + Math.floor(Math.random() * (hi - lo + 1))) / 10;
+}
+
+/* 把范围回写到输入框，并把按钮的悬浮说明同步成当前区间。 */
+function syncWeightRange() {
+  const minInput = document.getElementById('weightMin');
+  const maxInput = document.getElementById('weightMax');
+  const btn = document.getElementById('randomWeightBtn');
+  if (minInput) minInput.value = state.randomWeightMin.toFixed(1);
+  if (maxInput) maxInput.value = state.randomWeightMax.toFixed(1);
+  if (btn) {
+    btn.title = `所有选手权重随机为 ${state.randomWeightMin.toFixed(1)} – ${state.randomWeightMax.toFixed(1)}`;
+  }
+}
+
+/* 失焦时才收敛：与组数输入同一套策略，打字中途不打断，落地时钳制并说明。
+   上下限填反直接交换 —— 用户意图明确，不该让他重新输入两次。 */
+function commitWeightRange() {
+  const minInput = document.getElementById('weightMin');
+  const maxInput = document.getElementById('weightMax');
+  if (!minInput || !maxInput) return;
+
+  /* 先取钳制前的原始输入，用来判断该给哪条提示；回写会覆盖 input.value。 */
+  const typed = [parseFloat(minInput.value), parseFloat(maxInput.value)];
+  const clamped = typed.map(clampRandomWeight);
+  /* 任一端填空或填成非数字就保留原值，只回写显示。 */
+  const nextMin = clamped[0] === null ? state.randomWeightMin : clamped[0];
+  const nextMax = clamped[1] === null ? state.randomWeightMax : clamped[1];
+  const swapped = nextMin > nextMax;
+
+  state.randomWeightMin = Math.min(nextMin, nextMax);
+  state.randomWeightMax = Math.max(nextMin, nextMax);
+  syncWeightRange();
+  saveState();
+
+  const overflowed = typed.some(v => Number.isFinite(v) && v > RANDOM_WEIGHT_CEIL);
+  const underflowed = typed.some(v => Number.isFinite(v) && v < RANDOM_WEIGHT_FLOOR);
+  if (clamped.some(v => v === null)) showToast('随机范围需填数字');
+  else if (overflowed) showToast(`随机范围最大为 ${RANDOM_WEIGHT_CEIL}`);
+  else if (underflowed) showToast(`随机范围最小为 ${RANDOM_WEIGHT_FLOOR}`);
+  else if (swapped) showToast('已交换随机范围的上下限');
 }
 
 function randomizeWeights() {
@@ -362,9 +420,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (addBtn) addBtn.addEventListener('click', () => addEntry());
   const randomWeightBtn = document.getElementById('randomWeightBtn');
   if (randomWeightBtn) randomWeightBtn.addEventListener('click', randomizeWeights);
-  /* 「随机权重」也用 .preset-btn 样式，选择器要排除掉它才能拿到 ACDC。 */
-  const presetBtn = document.querySelector('.preset-btn:not(#randomWeightBtn)');
-  if (presetBtn) presetBtn.addEventListener('click', loadPresetRoster);
+  ['weightMin', 'weightMax'].forEach(id => {
+    const input = document.getElementById(id);
+    if (input) input.addEventListener('blur', commitWeightRange);
+  });
   const clearBtn = document.querySelector('.clear-btn');
   if (clearBtn) clearBtn.addEventListener('click', clearAll);
 
@@ -378,6 +437,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   setDistMode(state.distMode);
+  syncWeightRange();
   syncGroupStage();
   setMode(state.currentMode);
 
@@ -410,9 +470,10 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     if (state.modalOpen || state.spinning || state.grouping) return;
-    if (e.code !== 'Space' && e.code !== 'Enter') return;
     const tag = (e.target && e.target.tagName) || '';
     if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return;
+    trackPresetCode(e);
+    if (e.code !== 'Space' && e.code !== 'Enter') return;
     e.preventDefault();
     if (state.currentMode === 'lottery') handleSpin();
     else if (state.currentMode === 'grouping') handleGroup();

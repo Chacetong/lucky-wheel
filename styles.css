@@ -700,27 +700,25 @@ body.mode-grouping .group-controls {
   transform: translateY(0);
 }
 
-.group-count-input {
-  min-width: 150px;
-  padding: 0 20px;
+/* 数字输入控件的共用外观：描边容器 + 灰色小标签 + 居中的展示体数字。由
+   .group-count-input（组数）与 .range-field（随机权重范围）共享。 */
+.num-field {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   cursor: text;
   border: 2px solid var(--line);
   background: var(--black);
 }
 
-.group-count-input > span {
+.num-field > span {
   color: var(--gray);
   font-size: 0.76rem;
   font-weight: 700;
   white-space: nowrap;
 }
 
-.group-count-input input {
-  width: 56px;
+.num-field input {
   padding: 0;
   border: 0;
   background: transparent;
@@ -732,15 +730,30 @@ body.mode-grouping .group-controls {
   -moz-appearance: textfield;
 }
 
-.group-count-input input::-webkit-inner-spin-button,
-.group-count-input input::-webkit-outer-spin-button {
+.num-field input::-webkit-inner-spin-button,
+.num-field input::-webkit-outer-spin-button {
   margin: 0;
   appearance: none;
   -webkit-appearance: none;
 }
 
-.group-count-input:focus-within {
+.num-field:focus-within {
   border-color: var(--green);
+}
+
+.num-field input:disabled {
+  color: var(--gray);
+  cursor: not-allowed;
+}
+
+.group-count-input {
+  min-width: 150px;
+  padding: 0 20px;
+  justify-content: space-between;
+}
+
+.group-count-input input {
+  width: 56px;
 }
 
 .group-dist {
@@ -1069,20 +1082,53 @@ body.mode-grouping .group-controls {
   border-top: 1px solid var(--line);
 }
 
-/* 主操作「添加选手」独占一行，副操作在下方等宽平分。列数跟随实际子元素数量：
-   分组模式隐藏「随机权重」后剩下两个按钮仍平分整行，若写死 repeat(3, 1fr)
-   会留一个空列把按钮挤到左侧。 */
+/* 按钮区分两行：主操作与清空一行，「随机权重」与它的范围参数一行 —— 同行
+   即视觉绑定，参数属于哪个动作不必再解释。 */
 .roster__actions-row {
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
   gap: 8px;
 }
 
-/* 等宽格里由列宽决定尺寸，覆盖按钮自带的横向 padding 防窄栏溢出。 */
-.roster__actions-row > button {
+/* 「添加选手」吃掉剩余宽度，「清空」按自身 padding 收到最窄。 */
+.roster__actions-row--main {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+/* 范围一格要塞两个数字，比按钮略宽。 */
+.roster__actions-row--weight {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+}
+
+/* 由列宽决定尺寸，覆盖按钮自带的横向 padding 防窄栏溢出。 */
+.roster__actions-row--weight .preset-btn {
   min-width: 0;
   padding: 0 6px;
+}
+
+/* 与同行按钮等高；min-width: 0 让它跟着列宽压缩而不是撑破整行。两个数字比
+   组数控件的单个数字挤，字号与间距都收一档。 */
+/* 描边收到 1px：这一格挨着「随机权重」按钮，2px 会与按钮的实心块抢视觉重量，
+   把参数读成第二个动作。组数控件是主控制区的独立控件，仍保留 2px。 */
+.range-field {
+  min-width: 0;
+  min-height: 46px;
+  padding: 0 10px;
+  gap: 4px;
+  justify-content: center;
+  border-width: 1px;
+}
+
+.range-field input {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.98rem;
+}
+
+.range-field em {
+  flex-shrink: 0;
+  color: var(--gray);
+  font-style: normal;
+  font-weight: 900;
 }
 
 .add-btn,
@@ -1740,7 +1786,7 @@ body.canceling .group-stage .group-card {
 body.mode-grouping .stat-weight,
 body.mode-grouping .weight-label,
 body.mode-grouping .weight-input,
-body.mode-grouping .random-weight-btn {
+body.mode-grouping .roster__actions-row--weight {
   display: none;
 }
 
