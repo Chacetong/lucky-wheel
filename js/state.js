@@ -19,8 +19,8 @@ export const PALETTE = [
 ];
 
 export const ACDC_ROSTER = [
-  '唐晨', '毛星融', '周迪', '黄伟', '周剑',
-  '雷咏梅', '邓小璐', '黄健', '张恒',
+  '唐晨', '星融', '周迪', '黄伟', '周剑',
+  '佳佳', '小璐', '黄健', '张恒',
 ];
 
 /* 结果页速度线特效参数。挂到 window.RESULT_FX_CONFIG 上便于 DevTools
