@@ -43,8 +43,8 @@ export function chipScaleForCount(count) {
   return 0.7;
 }
 
-/* 依据当前分配模式，计算每组的计划人数。跟 assignEntriesToGroups 用同
-   样的分配算法，但只返回人数数组，供空闲状态的预览槽使用。 */
+/* 依据当前分配模式计算每组人数。这是分配算法的唯一实现：预览槽的「N 名候选」
+   和 assignEntriesToGroups 的实际切片都走这里，避免两处各写一遍后走偏。 */
 function groupSizes(n, k, mode) {
   const sizes = new Array(k).fill(0);
   if (n <= 0 || k <= 0) return sizes;
@@ -53,14 +53,18 @@ function groupSizes(n, k, mode) {
     const remainder = n % k;
     for (let i = 0; i < k; i++) sizes[i] = base + (i < remainder ? 1 : 0);
   } else {
+    /* per 是前排组的目标人数。关键是 reserve —— 给后面每组各留 1 人的额度，
+       前排才不会把人吃光。少了这一步，n 不够时前排按 per 装满会把末尾几组
+       饿成 0 人（5 人 4 组 → 2,2,1,0），空组既没意义又占着版面。
+       reserve 再跟剩余人数取 min，是给 k > n 的兜底：此时退化成前 n 组各
+       1 人，与 even 同形，不会出现「前面空、后面满」的倒挂。 */
     const per = Math.ceil(n / k);
     let assigned = 0;
-    for (let i = 0; i < k - 1 && assigned < n; i++) {
-      const size = Math.min(per, n - assigned);
-      sizes[i] = size;
-      assigned += size;
+    for (let i = 0; i < k; i++) {
+      const reserve = Math.min(k - 1 - i, Math.max(0, n - assigned - 1));
+      sizes[i] = Math.min(per, n - assigned - reserve);
+      assigned += sizes[i];
     }
-    sizes[k - 1] = Math.max(0, n - assigned);
   }
   return sizes;
 }
@@ -158,31 +162,25 @@ function shuffledEntries(list) {
   return arr;
 }
 
-/* 按分配模式返回长度为 k 的分组结果数组。
-   'even'  → 各组人数差 ≤ 1（13/4 → 4,3,3,3）
-   'fill'  → 前 k−1 组按 ceil(n/k) 装满，末组吃剩（13/4 → 4,4,4,1） */
+/* 返回 { groups, order }：
+     groups → 长度为 k 的分组结果，组内顺序即洗牌序的子序列
+     order  → 本轮洗牌后的全局顺序，投放动画用它当出场次序
+
+   两者同源是必须的：slot 里芯片的位置就是组内下标，投放次序一旦与组内顺序
+   不同源，就会出现「位置 3 已落、位置 1/2 还空」，提前泄露每组还剩几人。
+
+   人数由 groupSizes 决定（见其注释），这里只负责按人数依次切片。共用一份
+   算法，预览槽显示的人数与真实落位必然一致。 */
 function assignEntriesToGroups(list, k, mode) {
   const shuffled = shuffledEntries(list);
-  const n = shuffled.length;
-  const groups = Array.from({ length: k }, () => []);
-
-  if (mode === 'even') {
-    const base = Math.floor(n / k);
-    const remainder = n % k;
-    let idx = 0;
-    for (let g = 0; g < k; g++) {
-      const size = base + (g < remainder ? 1 : 0);
-      for (let s = 0; s < size; s++) groups[g].push(shuffled[idx++]);
-    }
-  } else {
-    const per = Math.ceil(n / k);
-    let idx = 0;
-    for (let g = 0; g < k - 1 && idx < n; g++) {
-      for (let s = 0; s < per && idx < n; s++) groups[g].push(shuffled[idx++]);
-    }
-    while (idx < n) groups[k - 1].push(shuffled[idx++]);
-  }
-  return groups;
+  const sizes = groupSizes(shuffled.length, k, mode);
+  let idx = 0;
+  const groups = sizes.map(size => {
+    const members = shuffled.slice(idx, idx + size);
+    idx += size;
+    return members;
+  });
+  return { groups, order: shuffled };
 }
 
 export function setDistMode(mode) {
@@ -382,18 +380,13 @@ function landEntry(transport, entry, groupIdx) {
   }, FLIGHT_MS));
 }
 
-function runGroupingAnimation(finalGroups) {
-  /* slot 内成员按 state.entries 顺序排列 —— 保证放置时永远是从前往后填，
-     不会出现「位置 3 已有芯片、位置 1/2 还空着」这种提前泄露"还剩几人"
-     的空位。分组归属仍是随机的，只是每个 slot 里的芯片位置对齐入场顺序。
-     currentGroupResult 也用这份排序结果，让结果 modal 的显示顺序与动画
-     结束时保持一致。 */
-  const entryIndex = new Map();
-  state.entries.forEach((e, i) => entryIndex.set(e.id, i));
-  const orderedGroups = finalGroups.map(members =>
-    [...members].sort((a, b) =>
-      (entryIndex.get(a.id) ?? 0) - (entryIndex.get(b.id) ?? 0))
-  );
+function runGroupingAnimation(assignment) {
+  /* 组内顺序直接沿用洗牌序，不再按 state.entries 重排 —— 重排会让结果页里
+     名单靠前的人恒定拿到更靠前的组内编号，看着像有优先级。洗牌序同样满足
+     「每组从位置 0 往后填」，因为切片就是按它依次 push 的。
+     currentGroupResult 用同一份数据，结果 modal 的顺序与动画落位一致。 */
+  const orderedGroups = assignment.groups;
+  const placeOrder = assignment.order;
 
   state.grouping = true;
   state.currentGroupResult = orderedGroups;
@@ -424,13 +417,13 @@ function runGroupingAnimation(finalGroups) {
   document.body.classList.add('grouping-active');
   syncUI();
 
-  /* 按 state.entries 顺序生成投放列表；每个 entry 反查所属组下标（分组本身
-     仍是随机的，只是投放次序按名单）。 */
+  /* 按洗牌序生成投放列表；每个 entry 反查所属组下标。出场次序随之变成随机
+     的，名单第一人不再固定第一个登场。 */
   const groupByEntryId = new Map();
   orderedGroups.forEach((members, groupIdx) => {
     members.forEach(entry => groupByEntryId.set(entry.id, groupIdx));
   });
-  const plan = state.entries
+  const plan = placeOrder
     .map(entry => ({ entry, groupIdx: groupByEntryId.get(entry.id) }))
     .filter(item => item.groupIdx !== undefined);
 
