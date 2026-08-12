@@ -351,9 +351,12 @@ function getWinnerAtPointer(rot) {
 }
 
 function easeSpin(t) {
-  /* Anticipation 前奏 —— 转盘先反向拉回一点再爆发向前，制造出手感张力。 */
-  const ANTICIPATION_RATIO = 0.05;
-  const ANTICIPATION_DIP = -0.006;
+  /* Anticipation 前奏 —— 转盘先反向拉回再向前，制造出手感张力。DIP 是占总
+     旋转量的比例，实际角度 = DIP × fullSpins，默认 6–7 圈下约 32°–38°。原先
+     的 0.6%（约 13°）不足半个扇区，拉回幅度看不清就白做了这个前奏。
+     RATIO 跟着放宽一档：行程涨 2.5 倍而时长不变会把拉回变成瞬间抽动。 */
+  const ANTICIPATION_RATIO = 0.065;
+  const ANTICIPATION_DIP = -0.015;
 
   if (t < ANTICIPATION_RATIO) {
     const p = t / ANTICIPATION_RATIO;
